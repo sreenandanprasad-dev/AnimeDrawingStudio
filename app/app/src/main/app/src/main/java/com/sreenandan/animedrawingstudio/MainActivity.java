@@ -1,9 +1,10 @@
+
 package com.sreenandan.animedrawingstudio;
 
 import android.app.Activity;
 import android.os.Bundle;
-import android.graphics.Color;
 import android.widget.TextView;
+import android.graphics.Color;
 
 public class MainActivity extends Activity {
 
@@ -11,13 +12,19 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        TextView text = new TextView(this);
-        text.setText("ANIME DRAWING STUDIO\n\nApp is working!");
-        text.setTextSize(24);
-        text.setTextColor(Color.BLACK);
-        text.setBackgroundColor(Color.WHITE);
-        text.setGravity(17);
+        TextView screen = new TextView(this);
+        screen.setText("STARTING APP...");
+        screen.setTextSize(22);
+        screen.setTextColor(Color.BLACK);
+        screen.setBackgroundColor(Color.WHITE);
+        screen.setGravity(17);
 
-        setContentView(text);
+        setContentView(screen);
+
+        try {
+            screen.setText("APP STARTED SUCCESSFULLY");
+        } catch (Throwable error) {
+            screen.setText(error.toString());
+        }
     }
 }
