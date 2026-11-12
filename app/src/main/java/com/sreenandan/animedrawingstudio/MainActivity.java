@@ -171,7 +171,7 @@ public class MainActivity extends Activity {
                 .setPositiveButton("Save",(d,w) -> {
                     String name=input.getText().toString().trim();
                     if (!name.isEmpty()) drawingView.renameActiveLayer(name);
-                    refresh[0].run();
+                    refresh.run();
                 }).show();
     }
 
