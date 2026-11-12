@@ -224,7 +224,7 @@ public class MainActivity extends Activity {
         private boolean eraser=false;
         private float zoom=1f, panX=0f, panY=0f, rotation=0f;
         private float lastMidX, lastMidY, lastAngle;
-        private boolean multiTouch=false;
+        private boolean multiTouch=false, drawingGesture=false;
         private final ScaleGestureDetector scaleDetector;
 
         DrawingView() {
@@ -380,7 +380,8 @@ public class MainActivity extends Activity {
             switch(event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     multiTouch=false;
-                    if (x<0 || y<0 || x>1600 || y>2200) return false;
+                    drawingGesture=(x>=0 && y>=0 && x<=1600 && y<=2200);
+                    if (!drawingGesture) return true;
                     if (!layers.get(activeLayer).visible) {
                         Toast.makeText(MainActivity.this,"Selected layer is hidden",Toast.LENGTH_SHORT).show();
                         return true;
@@ -426,7 +427,7 @@ public class MainActivity extends Activity {
                         invalidate();
                         return true;
                     }
-                    if (multiTouch) return true;
+                    if (multiTouch || !drawingGesture) return true;
                     paint.setColor(currentColor);
                     paint.setStrokeWidth(brushSize);
                     paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
@@ -441,7 +442,8 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_UP:
-                    if (multiTouch) { multiTouch=false; return true; }
+                    if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; return true; }
+                    drawingGesture=false;
                     paint.setColor(currentColor);
                     paint.setStrokeWidth(brushSize);
                     paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
@@ -452,6 +454,7 @@ public class MainActivity extends Activity {
 
                 case MotionEvent.ACTION_CANCEL:
                     multiTouch=false;
+                    drawingGesture=false;
                     paint.setXfermode(null);
                     return true;
             }
