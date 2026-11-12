@@ -419,6 +419,7 @@ public class MainActivity extends Activity {
             paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStrokeWidth(brushSize);
+            pencilTexture = createPencilTexture();
             scaleDetector = new ScaleGestureDetector(MainActivity.this,
                     new ScaleGestureDetector.SimpleOnScaleGestureListener() {
                 @Override public boolean onScale(ScaleGestureDetector detector) {
