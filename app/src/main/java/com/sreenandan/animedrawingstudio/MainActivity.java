@@ -157,13 +157,31 @@ public class MainActivity extends Activity {
         setContentView(root);
     }
 
+    private GradientDrawable bevel(boolean pressed) {
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(Color.rgb(212,208,200));
+        d.setCornerRadius(2);
+        d.setStroke(pressed ? 2 : 1, Color.rgb(90,90,90));
+        return d;
+    }
+
     private void addButton(LinearLayout parent, String label, Runnable action) {
         Button b = new Button(this);
         b.setText(label);
-        b.setTextSize(11);
+        b.setTextSize(12);
+        b.setTextColor(Color.BLACK);
         b.setAllCaps(false);
-        b.setPadding(2,0,2,0);
-        parent.addView(b,new LinearLayout.LayoutParams(0,48,1));
+        b.setTypeface(Typeface.DEFAULT);
+        b.setPadding(3,0,3,0);
+        StateListDrawable states = new StateListDrawable();
+        states.addState(new int[]{android.R.attr.state_pressed},bevel(true));
+        states.addState(new int[]{},bevel(false));
+        b.setBackground(states);
+        b.setMinHeight(42);
+        b.setMinimumHeight(42);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,46,1);
+        lp.setMargins(2,1,2,1);
+        parent.addView(b,lp);
         b.setOnClickListener(v -> action.run());
     }
 
