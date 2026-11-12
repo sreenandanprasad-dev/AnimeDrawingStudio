@@ -1,6 +1,7 @@
 package com.sreenandan.animedrawingstudio;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.os.Bundle;
 import android.content.ContentValues;
 import android.graphics.*;
@@ -28,10 +29,10 @@ public class MainActivity extends Activity {
 
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(8,8,8,8);
+        toolbar.setPadding(4,4,4,4);
         addButton(toolbar, "Undo", () -> drawingView.undo());
         addButton(toolbar, "Redo", () -> drawingView.redo());
-        addButton(toolbar, "Clear", () -> drawingView.clearCanvas());
+        addButton(toolbar, "Layers", () -> showLayers());
         addButton(toolbar, "Save", () -> saveImage());
 
         drawingView = new DrawingView();
@@ -85,9 +86,92 @@ public class MainActivity extends Activity {
         b.setText(label);
         b.setTextSize(11);
         b.setAllCaps(false);
-        b.setPadding(4,0,4,0);
+        b.setPadding(2,0,2,0);
         parent.addView(b,new LinearLayout.LayoutParams(0,48,1));
         b.setOnClickListener(v -> action.run());
+    }
+
+    private void showLayers() {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(18,8,18,8);
+
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout rows = new LinearLayout(this);
+        rows.setOrientation(LinearLayout.VERTICAL);
+        scroll.addView(rows);
+        panel.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Layers")
+                .setView(panel)
+                .setNegativeButton("Close",null)
+                .create();
+
+        Runnable refresh = new Runnable() {
+            @Override public void run() {
+                rows.removeAllViews();
+                ArrayList<String> names = drawingView.getLayerNames();
+                for (int i=names.size()-1;i>=0;i--) {
+                    final int index=i;
+                    LinearLayout row = new LinearLayout(MainActivity.this);
+                    row.setGravity(Gravity.CENTER_VERTICAL);
+                    TextView select = new TextView(MainActivity.this);
+                    select.setText((drawingView.getActiveLayer()==i ? "● " : "○ ") + names.get(i));
+                    select.setTextSize(16);
+                    select.setPadding(8,12,8,12);
+                    select.setTextColor(Color.WHITE);
+                    row.addView(select,new LinearLayout.LayoutParams(0,48,1));
+                    select.setOnClickListener(v -> {
+                        drawingView.setActiveLayer(index);
+                        refresh.run();
+                    });
+                    CheckBox visible = new CheckBox(MainActivity.this);
+                    visible.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+                    visible.setChecked(drawingView.isLayerVisible(index));
+                    visible.setOnCheckedChangeListener((button,checked) -> drawingView.setLayerVisible(index,checked));
+                    row.addView(visible);
+                    rows.addView(row);
+                    View line = new View(MainActivity.this);
+                    line.setBackgroundColor(Color.DKGRAY);
+                    rows.addView(line,new LinearLayout.LayoutParams(-1,1));
+                }
+            }
+        };
+        refresh.run();
+
+        LinearLayout actions = new LinearLayout(this);
+        addButton(actions,"+ Add",() -> {
+            if (drawingView.addLayer()) refresh.run();
+            else Toast.makeText(this,"Layer limit reached (6)",Toast.LENGTH_SHORT).show();
+        });
+        addButton(actions,"Rename",() -> renameLayer(refresh));
+        addButton(actions,"Delete",() -> {
+            if (!drawingView.deleteActiveLayer())
+                Toast.makeText(this,"Keep at least one layer",Toast.LENGTH_SHORT).show();
+            refresh.run();
+        });
+        panel.addView(actions,new LinearLayout.LayoutParams(-1,52));
+        dialog.setOnShowListener(v -> dialog.getWindow().setLayout(
+                (int)(getResources().getDisplayMetrics().widthPixels*0.92),
+                (int)(getResources().getDisplayMetrics().heightPixels*0.72)));
+        dialog.show();
+        dialog.getWindow().setLayout(
+                (int)(getResources().getDisplayMetrics().widthPixels*0.92),
+                (int)(getResources().getDisplayMetrics().heightPixels*0.72));
+    }
+
+    private void renameLayer(Runnable refresh) {
+        EditText input = new EditText(this);
+        input.setSingleLine(true);
+        input.setText(drawingView.getActiveLayerName());
+        new AlertDialog.Builder(this).setTitle("Rename layer").setView(input)
+                .setNegativeButton("Cancel",null)
+                .setPositiveButton("Save",(d,w) -> {
+                    String name=input.getText().toString().trim();
+                    if (!name.isEmpty()) drawingView.renameActiveLayer(name);
+                    refresh.run();
+                }).show();
     }
 
     private void saveImage() {
@@ -105,27 +189,42 @@ public class MainActivity extends Activity {
         }
         try (OutputStream out = getContentResolver().openOutputStream(uri)) {
             bitmap.compress(Bitmap.CompressFormat.PNG,100,out);
-            Toast.makeText(this,"Saved to Pictures/AnimeDrawingStudio",Toast.LENGTH_LONG).show();
+            bitmap.recycle();
+            Toast.makeText(this,"Merged image saved to Pictures/AnimeDrawingStudio",Toast.LENGTH_LONG).show();
         } catch (Exception e) {
             Toast.makeText(this,"Save failed: " + e.getMessage(),Toast.LENGTH_LONG).show();
         }
     }
 
     private class DrawingView extends View {
+        private class Layer {
+            Bitmap bitmap;
+            String name;
+            boolean visible=true;
+            Layer(String label) {
+                name=label;
+                bitmap=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
+                bitmap.eraseColor(Color.TRANSPARENT);
+            }
+        }
+        private class Snapshot {
+            int layerIndex;
+            Bitmap bitmap;
+            Snapshot(int index,Bitmap image) { layerIndex=index; bitmap=image; }
+        }
+
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
-        private final Bitmap bitmap;
-        private final Canvas bitmapCanvas;
-        private final ArrayList<Bitmap> undo = new ArrayList<>();
-        private final ArrayList<Bitmap> redo = new ArrayList<>();
+        private final ArrayList<Layer> layers = new ArrayList<>();
+        private final ArrayList<Snapshot> undo = new ArrayList<>();
+        private final ArrayList<Snapshot> redo = new ArrayList<>();
+        private int activeLayer=0;
         private float lastX,lastY;
-        private boolean eraser = false;
+        private boolean eraser=false;
 
         DrawingView() {
             super(MainActivity.this);
             setLayerType(View.LAYER_TYPE_SOFTWARE,null);
-            bitmap = Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
-            bitmap.eraseColor(Color.WHITE);
-            bitmapCanvas = new Canvas(bitmap);
+            layers.add(new Layer("Layer 1"));
             paint.setColor(Color.BLACK);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeCap(Paint.Cap.ROUND);
@@ -133,78 +232,147 @@ public class MainActivity extends Activity {
             paint.setStrokeWidth(brushSize);
         }
 
+        ArrayList<String> getLayerNames() {
+            ArrayList<String> result=new ArrayList<>();
+            for (Layer layer:layers) result.add(layer.name);
+            return result;
+        }
+        int getActiveLayer() { return activeLayer; }
+        String getActiveLayerName() { return layers.get(activeLayer).name; }
+        boolean isLayerVisible(int index) { return layers.get(index).visible; }
+        void setLayerVisible(int index,boolean visible) {
+            layers.get(index).visible=visible;
+            invalidate();
+        }
+        void setActiveLayer(int index) {
+            if (index>=0 && index<layers.size()) activeLayer=index;
+            invalidate();
+        }
+        boolean addLayer() {
+            if (layers.size()>=6) return false;
+            layers.add(new Layer("Layer "+(layers.size()+1)));
+            activeLayer=layers.size()-1;
+            invalidate();
+            return true;
+        }
+        boolean deleteActiveLayer() {
+            if (layers.size()<=1) return false;
+            Layer removed=layers.remove(activeLayer);
+            removed.bitmap.recycle();
+            activeLayer=Math.min(activeLayer,layers.size()-1);
+            clearHistory();
+            invalidate();
+            return true;
+        }
+        void renameActiveLayer(String name) {
+            layers.get(activeLayer).name=name;
+        }
         void setEraser(boolean value) { eraser=value; }
         void setBrushSize(float value) { brushSize=value; paint.setStrokeWidth(value); }
 
+        void clearHistory() {
+            for (Snapshot s:undo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
+            for (Snapshot s:redo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
+            undo.clear(); redo.clear();
+        }
         void saveUndo() {
-            if (undo.size() >= 20) undo.remove(0);
-            undo.add(bitmap.copy(Bitmap.Config.ARGB_8888,false));
-            for (Bitmap b: redo) b.recycle();
+            if (undo.size()>=8) {
+                Snapshot old=undo.remove(0);
+                if (!old.bitmap.isRecycled()) old.bitmap.recycle();
+            }
+            undo.add(new Snapshot(activeLayer,layers.get(activeLayer).bitmap.copy(Bitmap.Config.ARGB_8888,false)));
+            for (Snapshot s:redo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
             redo.clear();
         }
-
+        void restore(Snapshot snapshot) {
+            Layer layer=layers.get(snapshot.layerIndex);
+            Canvas c=new Canvas(layer.bitmap);
+            c.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR);
+            c.drawBitmap(snapshot.bitmap,0,0,null);
+            snapshot.bitmap.recycle();
+            invalidate();
+        }
         void undo() {
             if (undo.isEmpty()) return;
-            redo.add(bitmap.copy(Bitmap.Config.ARGB_8888,false));
-            Bitmap previous=undo.remove(undo.size()-1);
-            new Canvas(bitmap).drawBitmap(previous,0,0,null);
-            previous.recycle();
-            invalidate();
+            Snapshot current=new Snapshot(undo.get(undo.size()-1).layerIndex,
+                    layers.get(undo.get(undo.size()-1).layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false));
+            redo.add(current);
+            Snapshot previous=undo.remove(undo.size()-1);
+            activeLayer=previous.layerIndex;
+            restore(previous);
         }
-
         void redo() {
             if (redo.isEmpty()) return;
-            undo.add(bitmap.copy(Bitmap.Config.ARGB_8888,false));
-            Bitmap next=redo.remove(redo.size()-1);
-            new Canvas(bitmap).drawBitmap(next,0,0,null);
-            next.recycle();
-            invalidate();
+            Snapshot next=redo.remove(redo.size()-1);
+            if (undo.size()>=8) {
+                Snapshot old=undo.remove(0);
+                old.bitmap.recycle();
+            }
+            undo.add(new Snapshot(next.layerIndex,layers.get(next.layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false)));
+            activeLayer=next.layerIndex;
+            restore(next);
         }
-
         void clearCanvas() {
             saveUndo();
-            bitmap.eraseColor(Color.WHITE);
+            Canvas c=new Canvas(layers.get(activeLayer).bitmap);
+            c.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR);
             invalidate();
         }
-
-        Bitmap exportBitmap() { return bitmap.copy(Bitmap.Config.ARGB_8888,false); }
+        Bitmap exportBitmap() {
+            Bitmap merged=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
+            Canvas c=new Canvas(merged);
+            c.drawColor(Color.WHITE);
+            for (Layer layer:layers) if (layer.visible) c.drawBitmap(layer.bitmap,0,0,null);
+            return merged;
+        }
 
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             canvas.drawColor(Color.rgb(65,65,70));
-            float scale=Math.min((float)getWidth()/bitmap.getWidth(),(float)getHeight()/bitmap.getHeight());
-            float left=(getWidth()-bitmap.getWidth()*scale)/2f;
-            float top=(getHeight()-bitmap.getHeight()*scale)/2f;
+            float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
+            float left=(getWidth()-1600*scale)/2f;
+            float top=(getHeight()-2200*scale)/2f;
             canvas.save();
             canvas.translate(left,top);
             canvas.scale(scale,scale);
-            canvas.drawBitmap(bitmap,0,0,null);
+            Paint background=new Paint();
+            background.setColor(Color.WHITE);
+            canvas.drawRect(0,0,1600,2200,background);
+            for (Layer layer:layers) if (layer.visible) canvas.drawBitmap(layer.bitmap,0,0,null);
             canvas.restore();
         }
 
         @Override public boolean onTouchEvent(android.view.MotionEvent event) {
-            float scale=Math.min((float)getWidth()/bitmap.getWidth(),(float)getHeight()/bitmap.getHeight());
-            float left=(getWidth()-bitmap.getWidth()*scale)/2f;
-            float top=(getHeight()-bitmap.getHeight()*scale)/2f;
+            float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
+            float left=(getWidth()-1600*scale)/2f;
+            float top=(getHeight()-2200*scale)/2f;
             float x=(event.getX()-left)/scale;
             float y=(event.getY()-top)/scale;
             switch(event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
-                    if (x<0 || y<0 || x>bitmap.getWidth() || y>bitmap.getHeight()) return false;
+                    if (x<0 || y<0 || x>1600 || y>2200) return false;
+                    if (!layers.get(activeLayer).visible) {
+                        Toast.makeText(MainActivity.this,"Selected layer is hidden",Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
                     saveUndo();
                     lastX=x; lastY=y;
                     return true;
                 case MotionEvent.ACTION_MOVE:
-                    paint.setColor(eraser?Color.WHITE:currentColor);
-                    paint.setStrokeWidth(eraser?brushSize*3:brushSize);
-                    bitmapCanvas.drawLine(lastX,lastY,x,y,paint);
+                    paint.setColor(currentColor);
+                    paint.setStrokeWidth(brushSize);
+                    paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
+                    Canvas c=new Canvas(layers.get(activeLayer).bitmap);
+                    c.drawLine(lastX,lastY,x,y,paint);
                     lastX=x; lastY=y;
                     invalidate();
                     return true;
                 case MotionEvent.ACTION_UP:
-                    paint.setColor(eraser?Color.WHITE:currentColor);
-                    paint.setStrokeWidth(eraser?brushSize*3:brushSize);
-                    bitmapCanvas.drawPoint(x,y,paint);
+                    paint.setColor(currentColor);
+                    paint.setStrokeWidth(brushSize);
+                    paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
+                    new Canvas(layers.get(activeLayer).bitmap).drawPoint(x,y,paint);
+                    paint.setXfermode(null);
                     invalidate();
                     return true;
             }
