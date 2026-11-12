@@ -45,37 +45,14 @@ public class MainActivity extends Activity {
         appTitle.setTypeface(Typeface.DEFAULT_BOLD);
         titleBar.addView(appTitle,new LinearLayout.LayoutParams(-1,38));
 
-        LinearLayout menuBar = new LinearLayout(this);
-        menuBar.setGravity(Gravity.CENTER_VERTICAL);
-        menuBar.setPadding(6,0,6,0);
-        menuBar.setBackgroundColor(Color.rgb(212,208,200));
-        for (String menu : new String[]{"File","Edit","View","Layer","Help"}) {
-            TextView item = new TextView(this);
-            item.setText("  "+menu+"  ");
-            item.setTextColor(Color.BLACK);
-            item.setTextSize(14);
-            menuBar.addView(item,new LinearLayout.LayoutParams(-2,34));
-        }
-
-        LinearLayout toolbar = new LinearLayout(this);
-        toolbar.setGravity(Gravity.CENTER_VERTICAL);
-        toolbar.setPadding(4,4,4,4);
-        toolbar.setBackgroundColor(Color.rgb(212,208,200));
-        addButton(toolbar, "↶", () -> drawingView.undo());
-        addButton(toolbar, "↷", () -> drawingView.redo());
-        addButton(toolbar, "▤", () -> showLayers());
-        addButton(toolbar, "💾", () -> saveImage());
-        addButton(toolbar, "⌕", () -> drawingView.resetView());
-
         drawingView = new DrawingView();
-        root.addView(titleBar,new LinearLayout.LayoutParams(-1,42));
-        root.addView(menuBar,new LinearLayout.LayoutParams(-1,34));
-        root.addView(toolbar, new LinearLayout.LayoutParams(-1, 54));
+        root.addView(titleBar,new LinearLayout.LayoutParams(-1,34));
+        root.addView(toolbar, new LinearLayout.LayoutParams(-1, 42));
         root.addView(drawingView, new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout tools = new LinearLayout(this);
         tools.setOrientation(LinearLayout.VERTICAL);
-        tools.setPadding(8,6,8,8);
+        tools.setPadding(5,3,5,4);
         tools.setBackgroundColor(Color.rgb(212,208,200));
 
         LinearLayout colors = new LinearLayout(this);
@@ -85,8 +62,8 @@ public class MainActivity extends Activity {
         for (int color : palette) {
             View swatch = new View(this);
             swatch.setBackgroundColor(color);
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0,34,1);
-            p.setMargins(2,2,2,2);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0,22,1);
+            p.setMargins(2,1,2,1);
             colors.addView(swatch,p);
             swatch.setOnClickListener(v -> {
                 currentColor = color;
@@ -95,35 +72,43 @@ public class MainActivity extends Activity {
         }
         tools.addView(colors);
 
-        activeToolLabel = new TextView(this);
-        activeToolLabel.setText("ACTIVE TOOL: BRUSH");
-        activeToolLabel.setTextColor(Color.WHITE);
-        activeToolLabel.setTypeface(Typeface.DEFAULT_BOLD);
-        activeToolLabel.setTextSize(12);
-        activeToolLabel.setPadding(8,5,8,5);
-        activeToolLabel.setBackgroundColor(Color.rgb(0,0,128));
-        tools.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,30));
-
-        LinearLayout options = new LinearLayout(this);
-        options.setGravity(Gravity.CENTER_VERTICAL);
-        brushToolButton = addButton(options, "✎ Brush", () -> {
+        LinearLayout toolRow = new LinearLayout(this);
+        toolRow.setGravity(Gravity.CENTER_VERTICAL);
+        brushToolButton = addButton(toolRow, "✎", () -> {
             drawingView.setEraser(false);
             drawingView.setBucketTool(false);
             setActiveTool("BRUSH");
         });
-        eraserToolButton = addButton(options, "▰ Eraser", () -> {
+        eraserToolButton = addButton(toolRow, "▰", () -> {
             drawingView.setEraser(true);
             drawingView.setBucketTool(false);
             setActiveTool("ERASER");
         });
-        fillToolButton = addButton(options, "▧ Fill", () -> {
+        fillToolButton = addButton(toolRow, "▧", () -> {
             drawingView.setBucketTool(true);
             setActiveTool("FILL");
         });
-        setActiveTool("BRUSH");
+        activeToolLabel = new TextView(this);
+        activeToolLabel.setText("BRUSH");
+        activeToolLabel.setTextColor(Color.WHITE);
+        activeToolLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        activeToolLabel.setTextSize(10);
+        activeToolLabel.setGravity(Gravity.CENTER);
+        activeToolLabel.setBackgroundColor(Color.rgb(0,0,128));
+        toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(0,34,1));
+        tools.addView(toolRow);
+
+        LinearLayout sizeOpacityRow = new LinearLayout(this);
+        sizeOpacityRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView sizeLabel = new TextView(this);
+        sizeLabel.setText("Size");
+        sizeLabel.setTextColor(Color.BLACK);
+        sizeLabel.setTextSize(11);
+        sizeOpacityRow.addView(sizeLabel);
         SeekBar size = new SeekBar(this);
         size.setMax(80);
         size.setProgress(6);
+        size.setPadding(2,0,4,0);
         size.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar b,int value,boolean user) {
                 brushSize = Math.max(1,value);
@@ -132,19 +117,29 @@ public class MainActivity extends Activity {
             public void onStartTrackingTouch(SeekBar b) {}
             public void onStopTrackingTouch(SeekBar b) {}
         });
-        TextView sizeLabel = new TextView(this);
-        sizeLabel.setText("Size");
-        sizeLabel.setTextColor(Color.BLACK);
-        options.addView(sizeLabel);
-        options.addView(size,new LinearLayout.LayoutParams(0,48,1));
-        tools.addView(options);
+        sizeOpacityRow.addView(size,new LinearLayout.LayoutParams(0,30,1));
+        TextView opacityLabel = new TextView(this);
+        opacityLabel.setText("Opacity");
+        opacityLabel.setTextColor(Color.BLACK);
+        opacityLabel.setTextSize(11);
+        sizeOpacityRow.addView(opacityLabel);
+        SeekBar opacity = new SeekBar(this);
+        opacity.setMax(100);
+        opacity.setProgress(100);
+        opacity.setPadding(2,0,4,0);
+        opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar b,int value,boolean user) {
+                brushOpacity = value;
+                drawingView.setBrushOpacity(brushOpacity);
+            }
+            public void onStartTrackingTouch(SeekBar b) {}
+            public void onStopTrackingTouch(SeekBar b) {}
+        });
+        sizeOpacityRow.addView(opacity,new LinearLayout.LayoutParams(0,30,1));
+        tools.addView(sizeOpacityRow);
 
-        LinearLayout presetRow = new LinearLayout(this);
-        presetRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView presetLabel = new TextView(this);
-        presetLabel.setText("Brush");
-        presetLabel.setTextColor(Color.BLACK);
-        presetRow.addView(presetLabel);
+        LinearLayout presetStabilizerRow = new LinearLayout(this);
+        presetStabilizerRow.setGravity(Gravity.CENTER_VERTICAL);
         Spinner presets = new Spinner(this);
         String[] presetNames = {"G-Pen", "Mapping Pen", "Pencil", "Marker", "Airbrush"};
         ArrayAdapter<String> presetAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, presetNames);
@@ -158,50 +153,52 @@ public class MainActivity extends Activity {
             }
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
-        presetRow.addView(presets,new LinearLayout.LayoutParams(0,44,1));
-        tools.addView(presetRow);
-
-        LinearLayout opacityRow = new LinearLayout(this);
-        opacityRow.setGravity(Gravity.CENTER_VERTICAL);
-        TextView opacityLabel = new TextView(this);
-        opacityLabel.setText("Opacity");
-        opacityLabel.setTextColor(Color.BLACK);
-        opacityRow.addView(opacityLabel);
-        SeekBar opacity = new SeekBar(this);
-        opacity.setMax(100);
-        opacity.setProgress(100);
-        opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
-            public void onProgressChanged(SeekBar b,int value,boolean user) {
-                brushOpacity = Math.max(1,value);
-                drawingView.setBrushOpacity(brushOpacity);
-            }
-            public void onStartTrackingTouch(SeekBar b) {}
-            public void onStopTrackingTouch(SeekBar b) {}
-        });
-        opacityRow.addView(opacity,new LinearLayout.LayoutParams(0,44,1));
-        tools.addView(opacityRow);
-        LinearLayout stabilizerRow = new LinearLayout(this);
-        stabilizerRow.setGravity(Gravity.CENTER_VERTICAL);
+        presetStabilizerRow.addView(presets,new LinearLayout.LayoutParams(0,32,1));
         TextView stabilizerLabel = new TextView(this);
-        stabilizerLabel.setText("Stabilizer 0");
+        stabilizerLabel.setText("Stab 0");
         stabilizerLabel.setTextColor(Color.BLACK);
-        stabilizerRow.addView(stabilizerLabel);
+        stabilizerLabel.setTextSize(11);
+        presetStabilizerRow.addView(stabilizerLabel);
         SeekBar stabilizerBar = new SeekBar(this);
         stabilizerBar.setMax(100);
         stabilizerBar.setProgress(0);
+        stabilizerBar.setPadding(2,0,2,0);
         stabilizerBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar b,int value,boolean user) {
                 stabilizer = value;
-                stabilizerLabel.setText("Stabilizer " + value);
+                stabilizerLabel.setText("Stab " + value);
                 drawingView.setStabilizer(value);
             }
             public void onStartTrackingTouch(SeekBar b) {}
             public void onStopTrackingTouch(SeekBar b) {}
         });
-        stabilizerRow.addView(stabilizerBar,new LinearLayout.LayoutParams(0,44,1));
-        tools.addView(stabilizerRow);
-        root.addView(tools,new LinearLayout.LayoutParams(-1,192));
+        presetStabilizerRow.addView(stabilizerBar,new LinearLayout.LayoutParams(0,30,1));
+        tools.addView(presetStabilizerRow);
+        root.addView(tools,new LinearLayout.LayoutParams(-1,132));
+
+        android.content.SharedPreferences preferences = getSharedPreferences("drawing_ui",MODE_PRIVATE);
+        final boolean[] rightHanded = {preferences.getBoolean("right_handed",true)};
+        tools.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
+        Button handButton = addButton(toolbar,rightHanded[0] ? "Right" : "Left",() -> {
+            rightHanded[0] = !rightHanded[0];
+            preferences.edit().putBoolean("right_handed",rightHanded[0]).apply();
+            tools.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
+            handButtonLabelRefresh(toolbar,rightHanded[0]);
+        });
+        handButton.setTextSize(10);
+        setActiveTool("BRUSH");
         setContentView(root);
+    }
+
+    private void handButtonLabelRefresh(LinearLayout toolbar, boolean rightHanded) {
+        for (int i=0;i<toolbar.getChildCount();i++) {
+            View child=toolbar.getChildAt(i);
+            if (child instanceof Button && ("Right".equals(((Button)child).getText().toString())
+                    || "Left".equals(((Button)child).getText().toString()))) {
+                ((Button)child).setText(rightHanded ? "Right" : "Left");
+                return;
+            }
+        }
     }
 
     private GradientDrawable bevel(boolean pressed) {
@@ -213,7 +210,7 @@ public class MainActivity extends Activity {
     }
 
     private void setActiveTool(String tool) {
-        activeToolLabel.setText("ACTIVE TOOL: " + tool);
+        activeToolLabel.setText(tool);
         styleToolButton(brushToolButton,"BRUSH".equals(tool));
         styleToolButton(eraserToolButton,"ERASER".equals(tool));
         styleToolButton(fillToolButton,"FILL".equals(tool));
@@ -244,7 +241,7 @@ public class MainActivity extends Activity {
         b.setBackground(states);
         b.setMinHeight(42);
         b.setMinimumHeight(42);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,46,1);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,38,1);
         lp.setMargins(2,1,2,1);
         parent.addView(b,lp);
         b.setOnClickListener(v -> action.run());
@@ -376,6 +373,7 @@ public class MainActivity extends Activity {
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint previewPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Bitmap pencilTexture;
         private final Path currentPath = new Path();
         private boolean strokeInProgress=false;
         private int strokeColor=Color.BLACK;
@@ -423,6 +421,41 @@ public class MainActivity extends Activity {
                     return true;
                 }
             });
+        }
+
+        private Bitmap createPencilTexture() {
+            Bitmap texture=Bitmap.createBitmap(48,48,Bitmap.Config.ARGB_8888);
+            java.util.Random random=new java.util.Random(7319L);
+            int[] pixels=new int[48*48];
+            for(int i=0;i<pixels.length;i++) {
+                int alpha=random.nextInt(256);
+                pixels[i]=Color.argb(alpha,255,255,255);
+            }
+            texture.setPixels(pixels,0,48,0,0,48,48);
+            return texture;
+        }
+
+        private int presetOpacity(int preset, int userOpacity) {
+            int base=preset==2 ? 225 : (preset==3 ? 112 : (preset==4 ? 82 : 255));
+            return Math.max(0,Math.min(255,base*userOpacity/100));
+        }
+
+        private void configureStrokePaint(Paint target,int preset,int color,int userOpacity,float width) {
+            target.setStyle(Paint.Style.STROKE);
+            target.setStrokeCap(Paint.Cap.ROUND);
+            target.setStrokeJoin(Paint.Join.ROUND);
+            target.setStrokeWidth(width);
+            target.setColor(color);
+            target.setAlpha(presetOpacity(preset,userOpacity));
+            target.setShader(null);
+            target.setColorFilter(null);
+            target.setMaskFilter(null);
+            if(preset==2) {
+                target.setShader(new BitmapShader(pencilTexture,Shader.TileMode.REPEAT,Shader.TileMode.REPEAT));
+                target.setColorFilter(new PorterDuffColorFilter(color,PorterDuff.Mode.SRC_IN));
+            } else if(preset==4) {
+                target.setMaskFilter(new BlurMaskFilter(Math.max(2f,width*0.9f),BlurMaskFilter.Blur.NORMAL));
+            }
         }
 
         void resetView() {
@@ -611,14 +644,10 @@ public class MainActivity extends Activity {
             canvas.drawRect(0,0,1600,2200,background);
             for (Layer layer:layers) if (layer.visible) canvas.drawBitmap(layer.bitmap,0,0,null);
             if (strokeInProgress && !strokeEraser) {
-                previewPaint.setColor(strokeColor);
-                previewPaint.setAlpha(strokeAlpha);
-                previewPaint.setStyle(Paint.Style.STROKE);
-                previewPaint.setStrokeCap(Paint.Cap.ROUND);
-                previewPaint.setStrokeJoin(Paint.Join.ROUND);
-                previewPaint.setStrokeWidth(strokeWidth);
-                previewPaint.setMaskFilter(strokePreset==4 ? new BlurMaskFilter(strokeWidth*0.65f,BlurMaskFilter.Blur.NORMAL) : null);
+                configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                 canvas.drawPath(currentPath,previewPaint);
+                previewPaint.setShader(null);
+                previewPaint.setColorFilter(null);
                 previewPaint.setMaskFilter(null);
             }
             canvas.restore();
@@ -771,14 +800,21 @@ public class MainActivity extends Activity {
                         // Connecting to the raw finger point here can create a sudden final sweep.
                         if (activeStabilizer == 0) currentPath.lineTo(x,y);
                         else currentPath.lineTo(lastX,lastY);
-                        paint.setColor(strokeColor);
-                        int presetAlpha=strokePreset==2 ? 185 : (strokePreset==3 ? 105 : (strokePreset==4 ? 65 : strokeAlpha));
-                        paint.setAlpha((int)(presetAlpha*(strokeAlpha/255f)));
-                        paint.setStrokeWidth(strokeWidth);
-                        paint.setMaskFilter(strokePreset==4 ? new BlurMaskFilter(strokeWidth*0.65f,BlurMaskFilter.Blur.NORMAL) : null);
+                        if(strokeEraser) {
+                            paint.setColor(Color.TRANSPARENT);
+                            paint.setAlpha(255);
+                            paint.setShader(null);
+                            paint.setColorFilter(null);
+                            paint.setMaskFilter(null);
+                            paint.setStrokeWidth(strokeWidth);
+                        } else {
+                            configureStrokePaint(paint,strokePreset,strokeColor,brushOpacity,strokeWidth);
+                        }
                         paint.setXfermode(strokeEraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
                         new Canvas(layers.get(activeLayer).bitmap).drawPath(currentPath,paint);
                         paint.setXfermode(null);
+                        paint.setShader(null);
+                        paint.setColorFilter(null);
                         paint.setMaskFilter(null);
                     }
                     strokeInProgress=false;
