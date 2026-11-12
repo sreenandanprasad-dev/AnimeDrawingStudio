@@ -96,6 +96,7 @@ public class MainActivity extends Activity {
         options.setGravity(Gravity.CENTER_VERTICAL);
         addButton(options, "✎ Brush", () -> drawingView.setEraser(false));
         addButton(options, "▰ Eraser", () -> drawingView.setEraser(true));
+        addButton(options, "▧ Fill", () -> drawingView.setBucketTool(true));
         SeekBar size = new SeekBar(this);
         size.setMax(80);
         size.setProgress(6);
@@ -327,6 +328,7 @@ public class MainActivity extends Activity {
         private long lastTouchTime;
         private float reversalScore=0f;
         private boolean eraser=false;
+        private boolean bucketTool=false;
         private float zoom=1f, panX=0f, panY=0f, rotation=0f;
         private float lastMidX, lastMidY, lastAngle;
         private boolean multiTouch=false, drawingGesture=false;
@@ -397,7 +399,8 @@ public class MainActivity extends Activity {
         void renameActiveLayer(String name) {
             layers.get(activeLayer).name=name;
         }
-        void setEraser(boolean value) { eraser=value; }
+        void setEraser(boolean value) { eraser=value; bucketTool=false; }
+        void setBucketTool(boolean value) { bucketTool=value; eraser=false; invalidate(); }
         void setBrushSize(float value) { brushSize=value; paint.setStrokeWidth(value); }
         void setBrushOpacity(int value) { brushOpacity=Math.max(1,Math.min(100,value)); }
         void setStabilizer(int value) { activeStabilizer=Math.max(0,Math.min(100,value)); }
@@ -444,6 +447,75 @@ public class MainActivity extends Activity {
             activeLayer=next.layerIndex;
             restore(next);
         }
+        // PaintMan-style contiguous fill. The visible composite is sampled so
+        // line art on a separate layer can define the regions to be coloured.
+        void fillAt(int startX,int startY) {
+            if (!layers.get(activeLayer).visible) {
+                Toast.makeText(MainActivity.this,"Selected layer is hidden",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            final int width=1600, height=2200, total=width*height;
+            Bitmap composite=exportBitmap();
+            int[] source=new int[total];
+            int[] target=new int[total];
+            composite.getPixels(source,0,width,0,0,width,height);
+            composite.recycle();
+            Layer destination=layers.get(activeLayer);
+            destination.bitmap.getPixels(target,0,width,0,0,width,height);
+            int start=startY*width+startX;
+            int sampled=source[start];
+            int replacement=currentColor;
+            if (sampled==replacement || colorDistance(sampled,replacement)<8) return;
+            saveUndo();
+            // Mark visited source pixels with a sentinel while using a scanline queue.
+            int capacity=4096, head=0, tail=0;
+            int[] queue=new int[capacity];
+            queue[tail++]=start;
+            final int tolerance=42;
+            while(head<tail) {
+                int seed=queue[head++];
+                int sy=seed/width, sx=seed%width;
+                if (source[seed]==Integer.MIN_VALUE || colorDistance(source[seed],sampled)>tolerance) continue;
+                int left=sx, right=sx;
+                while(left>0 && source[sy*width+left-1]!=Integer.MIN_VALUE
+                        && colorDistance(source[sy*width+left-1],sampled)<=tolerance) left--;
+                while(right<width-1 && source[sy*width+right+1]!=Integer.MIN_VALUE
+                        && colorDistance(source[sy*width+right+1],sampled)<=tolerance) right++;
+                for(int px=left;px<=right;px++) {
+                    int index=sy*width+px;
+                    source[index]=Integer.MIN_VALUE;
+                    target[index]=replacement;
+                }
+                for(int ny : new int[]{sy-1,sy+1}) {
+                    if(ny<0 || ny>=height) continue;
+                    int px=left;
+                    while(px<=right) {
+                        int index=ny*width+px;
+                        if(source[index]!=Integer.MIN_VALUE && colorDistance(source[index],sampled)<=tolerance) {
+                            if(tail==capacity) {
+                                capacity*=2;
+                                int[] grown=new int[capacity];
+                                System.arraycopy(queue,0,grown,0,tail);
+                                queue=grown;
+                            }
+                            queue[tail++]=index;
+                            px++;
+                            while(px<=right && source[ny*width+px]!=Integer.MIN_VALUE
+                                    && colorDistance(source[ny*width+px],sampled)<=tolerance) px++;
+                        } else px++;
+                    }
+                }
+            }
+            destination.bitmap.setPixels(target,0,width,0,0,width,height);
+            invalidate();
+        }
+        private int colorDistance(int a,int b) {
+            int dr=Math.abs(Color.red(a)-Color.red(b));
+            int dg=Math.abs(Color.green(a)-Color.green(b));
+            int db=Math.abs(Color.blue(a)-Color.blue(b));
+            return Math.max(dr,Math.max(dg,db));
+        }
+
         void clearCanvas() {
             saveUndo();
             Canvas c=new Canvas(layers.get(activeLayer).bitmap);
@@ -496,6 +568,10 @@ public class MainActivity extends Activity {
             switch(event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     multiTouch=false;
+                    if (bucketTool) {
+                        if (x>=0 && y>=0 && x<1600 && y<2200) fillAt(Math.round(x),Math.round(y));
+                        return true;
+                    }
                     drawingGesture=(x>=0 && y>=0 && x<=1600 && y<=2200);
                     if (!drawingGesture) return true;
                     if (!layers.get(activeLayer).visible) {
