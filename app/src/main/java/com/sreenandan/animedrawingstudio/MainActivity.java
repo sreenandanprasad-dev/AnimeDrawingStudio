@@ -294,7 +294,7 @@ public class MainActivity extends Activity {
                     new ScaleGestureDetector.SimpleOnScaleGestureListener() {
                 @Override public boolean onScale(ScaleGestureDetector detector) {
                     float oldZoom=zoom;
-                    zoom=Math.max(1f,Math.min(5f,zoom*detector.getScaleFactor()));
+                    zoom=Math.max(1f,Math.min(20f,zoom*detector.getScaleFactor()));
                     float factor=zoom/oldZoom;
                     float vx=detector.getFocusX()-(getWidth()/2f+panX);
                     float vy=detector.getFocusY()-(getHeight()/2f+panY);
@@ -508,7 +508,10 @@ public class MainActivity extends Activity {
                         // Low-pass filtering: higher values smooth more, with a bounded response
                         // so the brush follows the finger instead of feeling excessively delayed.
                         float strength = activeStabilizer / 100f;
-                        float response = 1f - (0.88f * strength);
+                        // Non-linear response makes every slider step progressively steadier.
+                        // At 100 the brush follows a much slower, smoother filtered path.
+                        float response = (float)Math.pow(1f - strength, 2.4f);
+                        response = Math.max(0.012f, response);
                         float filteredX = lastX + (x-lastX) * response;
                         float filteredY = lastY + (y-lastY) * response;
                         float midX = (lastX + filteredX) * 0.5f;
