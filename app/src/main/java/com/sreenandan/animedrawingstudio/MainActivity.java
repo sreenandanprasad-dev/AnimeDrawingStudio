@@ -719,7 +719,7 @@ public class MainActivity extends Activity {
             for (Layer layer:layers) if (layer.visible) canvas.drawBitmap(layer.bitmap,0,0,null);
             if (strokeInProgress && !strokeEraser) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
-                canvas.drawPath(currentPath,previewPaint);
+                drawSymmetricPath(canvas,currentPath,previewPaint);
                 previewPaint.setShader(null);
                 previewPaint.setColorFilter(null);
                 previewPaint.setMaskFilter(null);
