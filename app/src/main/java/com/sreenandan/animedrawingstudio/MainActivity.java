@@ -34,6 +34,7 @@ public class MainActivity extends Activity {
         addButton(toolbar, "Redo", () -> drawingView.redo());
         addButton(toolbar, "Layers", () -> showLayers());
         addButton(toolbar, "Save", () -> saveImage());
+        addButton(toolbar, "Fit", () -> drawingView.resetView());
 
         drawingView = new DrawingView();
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, 56));
@@ -221,6 +222,10 @@ public class MainActivity extends Activity {
         private int activeLayer=0;
         private float lastX,lastY;
         private boolean eraser=false;
+        private float zoom=1f, panX=0f, panY=0f;
+        private float lastMidX, lastMidY;
+        private boolean multiTouch=false;
+        private final ScaleGestureDetector scaleDetector;
 
         DrawingView() {
             super(MainActivity.this);
@@ -231,6 +236,26 @@ public class MainActivity extends Activity {
             paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setStrokeJoin(Paint.Join.ROUND);
             paint.setStrokeWidth(brushSize);
+            scaleDetector = new ScaleGestureDetector(MainActivity.this,
+                    new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+                @Override public boolean onScale(ScaleGestureDetector detector) {
+                    float oldZoom=zoom;
+                    zoom=Math.max(1f,Math.min(5f,zoom*detector.getScaleFactor()));
+                    float factor=zoom/oldZoom;
+                    float base=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
+                    float left=(getWidth()-1600f*base)/2f;
+                    float top=(getHeight()-2200f*base)/2f;
+                    panX=detector.getFocusX()-left-(detector.getFocusX()-left-panX)*factor;
+                    panY=detector.getFocusY()-top-(detector.getFocusY()-top-panY)*factor;
+                    invalidate();
+                    return true;
+                }
+            });
+        }
+
+        void resetView() {
+            zoom=1f; panX=0f; panY=0f;
+            invalidate();
         }
 
         ArrayList<String> getLayerNames() {
@@ -334,8 +359,8 @@ public class MainActivity extends Activity {
             float left=(getWidth()-1600*scale)/2f;
             float top=(getHeight()-2200*scale)/2f;
             canvas.save();
-            canvas.translate(left,top);
-            canvas.scale(scale,scale);
+            canvas.translate(left+panX,top+panY);
+            canvas.scale(scale*zoom,scale*zoom);
             Paint background=new Paint();
             background.setColor(Color.WHITE);
             canvas.drawRect(0,0,1600,2200,background);
@@ -344,13 +369,15 @@ public class MainActivity extends Activity {
         }
 
         @Override public boolean onTouchEvent(android.view.MotionEvent event) {
-            float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
-            float left=(getWidth()-1600*scale)/2f;
-            float top=(getHeight()-2200*scale)/2f;
-            float x=(event.getX()-left)/scale;
-            float y=(event.getY()-top)/scale;
+            scaleDetector.onTouchEvent(event);
+            float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f)*zoom;
+            float left=(getWidth()-1600f*Math.min((float)getWidth()/1600f,(float)getHeight()/2200f))/2f;
+            float top=(getHeight()-2200f*Math.min((float)getWidth()/1600f,(float)getHeight()/2200f))/2f;
+            float x=(event.getX()-left-panX)/scale;
+            float y=(event.getY()-top-panY)/scale;
             switch(event.getAction()) {
                 case MotionEvent.ACTION_DOWN:
+                    multiTouch=false;
                     if (x<0 || y<0 || x>1600 || y>2200) return false;
                     if (!layers.get(activeLayer).visible) {
                         Toast.makeText(MainActivity.this,"Selected layer is hidden",Toast.LENGTH_SHORT).show();
@@ -359,7 +386,22 @@ public class MainActivity extends Activity {
                     saveUndo();
                     lastX=x; lastY=y;
                     return true;
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    multiTouch=true;
+                    lastMidX=(event.getX(0)+event.getX(1))/2f;
+                    lastMidY=(event.getY(0)+event.getY(1))/2f;
+                    return true;
                 case MotionEvent.ACTION_MOVE:
+                    if (event.getPointerCount()>=2) {
+                        float midX=(event.getX(0)+event.getX(1))/2f;
+                        float midY=(event.getY(0)+event.getY(1))/2f;
+                        panX+=midX-lastMidX;
+                        panY+=midY-lastMidY;
+                        lastMidX=midX; lastMidY=midY;
+                        invalidate();
+                        return true;
+                    }
+                    if (multiTouch) return true;
                     paint.setColor(currentColor);
                     paint.setStrokeWidth(brushSize);
                     paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
@@ -368,13 +410,21 @@ public class MainActivity extends Activity {
                     lastX=x; lastY=y;
                     invalidate();
                     return true;
+                case MotionEvent.ACTION_POINTER_UP:
+                    multiTouch=true;
+                    return true;
                 case MotionEvent.ACTION_UP:
+                    if (multiTouch) { multiTouch=false; return true; }
                     paint.setColor(currentColor);
                     paint.setStrokeWidth(brushSize);
                     paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
                     new Canvas(layers.get(activeLayer).bitmap).drawPoint(x,y,paint);
                     paint.setXfermode(null);
                     invalidate();
+                    return true;
+                case MotionEvent.ACTION_CANCEL:
+                    multiTouch=false;
+                    paint.setXfermode(null);
                     return true;
             }
             return true;
