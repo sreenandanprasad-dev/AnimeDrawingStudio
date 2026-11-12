@@ -25,6 +25,7 @@ public class MainActivity extends Activity {
     private Button brushToolButton, eraserToolButton, fillToolButton;
     private Button lineToolButton, rectToolButton, ellipseToolButton;
     private TextView activeToolLabel;
+    private Button symmetryButton;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -55,6 +56,11 @@ public class MainActivity extends Activity {
         addButton(toolbar,"▤",() -> showLayers());
         addButton(toolbar,"Save",() -> saveImage());
         addButton(toolbar,"⌕",() -> drawingView.resetView());
+        symmetryButton = addButton(toolbar,"Sym OFF",() -> {
+            boolean enabled = !drawingView.isSymmetryEnabled();
+            drawingView.setSymmetryEnabled(enabled);
+            symmetryButton.setText(enabled ? "Sym ON" : "Sym OFF");
+        });
 
         drawingView = new DrawingView();
         root.addView(titleBar,new LinearLayout.LayoutParams(-1,34));
@@ -430,6 +436,7 @@ public class MainActivity extends Activity {
         private float reversalScore=0f;
         private boolean eraser=false;
         private boolean bucketTool=false;
+        private boolean symmetryEnabled=false;
         private int shapeTool=0;
         private boolean shapeInProgress=false;
         private float shapeStartX,shapeStartY,shapeEndX,shapeEndY;
@@ -546,6 +553,31 @@ public class MainActivity extends Activity {
         void setBrushPreset(int value) { brushPreset=Math.max(0,Math.min(4,value)); }
         void setBrushOpacity(int value) { brushOpacity=Math.max(1,Math.min(100,value)); }
         void setStabilizer(int value) { activeStabilizer=Math.max(0,Math.min(100,value)); }
+        boolean isSymmetryEnabled() { return symmetryEnabled; }
+        void setSymmetryEnabled(boolean enabled) { symmetryEnabled=enabled; invalidate(); }
+
+        private void drawSymmetricPath(Canvas target,Path path,Paint strokePaint) {
+            target.drawPath(path,strokePaint);
+            if (symmetryEnabled) {
+                target.save();
+                target.translate(1600f,0f);
+                target.scale(-1f,1f);
+                target.drawPath(path,strokePaint);
+                target.restore();
+            }
+        }
+
+        private void drawSymmetricShape(Canvas target,Paint shapePaint,int tool,
+                                        float x1,float y1,float x2,float y2) {
+            drawShape(target,shapePaint,tool,x1,y1,x2,y2);
+            if (symmetryEnabled) {
+                target.save();
+                target.translate(1600f,0f);
+                target.scale(-1f,1f);
+                drawShape(target,shapePaint,tool,x1,y1,x2,y2);
+                target.restore();
+            }
+        }
 
         void clearHistory() {
             for (Snapshot s:undo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
@@ -694,10 +726,17 @@ public class MainActivity extends Activity {
             }
             if (shapeInProgress) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
-                drawShape(canvas,previewPaint,shapeTool,shapeStartX,shapeStartY,shapeEndX,shapeEndY);
+                drawSymmetricShape(canvas,previewPaint,shapeTool,shapeStartX,shapeStartY,shapeEndX,shapeEndY);
                 previewPaint.setShader(null);
                 previewPaint.setColorFilter(null);
                 previewPaint.setMaskFilter(null);
+            }
+            if (symmetryEnabled) {
+                Paint axis = new Paint(Paint.ANTI_ALIAS_FLAG);
+                axis.setColor(Color.rgb(40,120,220));
+                axis.setStrokeWidth(2f / (scale*zoom));
+                axis.setPathEffect(new DashPathEffect(new float[]{12f/(scale*zoom),8f/(scale*zoom)},0));
+                canvas.drawLine(800f,0f,800f,2200f,axis);
             }
             canvas.restore();
         }
@@ -873,7 +912,7 @@ public class MainActivity extends Activity {
                         shapeEndX=x;
                         shapeEndY=y;
                         configureStrokePaint(paint,strokePreset,strokeColor,brushOpacity,strokeWidth);
-                        drawShape(new Canvas(layers.get(activeLayer).bitmap),paint,shapeTool,
+                        drawSymmetricShape(new Canvas(layers.get(activeLayer).bitmap),paint,shapeTool,
                                 shapeStartX,shapeStartY,shapeEndX,shapeEndY);
                         paint.setShader(null);
                         paint.setColorFilter(null);
@@ -896,7 +935,7 @@ public class MainActivity extends Activity {
                             configureStrokePaint(paint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                         }
                         paint.setXfermode(strokeEraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
-                        new Canvas(layers.get(activeLayer).bitmap).drawPath(currentPath,paint);
+                        drawSymmetricPath(new Canvas(layers.get(activeLayer).bitmap),currentPath,paint);
                         paint.setXfermode(null);
                         paint.setShader(null);
                         paint.setColorFilter(null);
