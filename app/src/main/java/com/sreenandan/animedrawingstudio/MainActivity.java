@@ -515,14 +515,14 @@ public class MainActivity extends Activity {
                     float speed=(float)Math.hypot(touchDX,touchDY)/elapsed;
                     float previousLength=(float)Math.hypot(previousTouchDX,previousTouchDY);
                     float currentLength=(float)Math.hypot(touchDX,touchDY);
-                    if (speed>0.35f && previousLength>1.5f && currentLength>1.5f) {
+                    if (speed>0.16f && previousLength>1.2f && currentLength>1.2f) {
                         float directionDot=(touchDX*previousTouchDX+touchDY*previousTouchDY)
                                 /(currentLength*previousLength);
-                        if (directionDot < -0.35f) {
+                        if (directionDot < -0.20f) {
                             // Repeated quick reversals are characteristic of colouring strokes.
-                            reversalScore=Math.min(3f,reversalScore+1f);
+                            reversalScore=Math.min(3f,reversalScore+1.15f);
                         } else {
-                            reversalScore=Math.max(0f,reversalScore-0.08f);
+                            reversalScore=Math.max(0f,reversalScore-0.035f);
                         }
                     } else {
                         reversalScore=Math.max(0f,reversalScore-0.08f);
@@ -544,9 +544,12 @@ public class MainActivity extends Activity {
                         // repeated back-and-forth movements it automatically loosens so
                         // colouring stays responsive without turning the stabilizer off.
                         float strength = activeStabilizer / 100f;
-                        float response = (float)Math.pow(1f - strength, 2.4f);
-                        response = Math.max(0.012f, response);
-                        float colouringAssist=Math.min(0.90f,reversalScore*0.30f);
+                        // A gentler curve keeps high settings steady without making
+                        // the brush lag far behind the finger.
+                        float response = (float)Math.pow(1f - strength, 1.6f);
+                        response = Math.max(0.045f, response);
+                        // Quick repeated reversals loosen the brush for colouring.
+                        float colouringAssist=Math.min(0.94f,reversalScore*0.38f);
                         response += (1f-response)*colouringAssist;
                         float filteredX = lastX + (x-lastX) * response;
                         float filteredY = lastY + (y-lastY) * response;
@@ -567,7 +570,10 @@ public class MainActivity extends Activity {
                     if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; strokeInProgress=false; currentPath.reset(); invalidate(); return true; }
                     drawingGesture=false;
                     if (strokeInProgress) {
-                        currentPath.lineTo(x,y);
+                        // Finish at the filtered brush position when stabilization is active.
+                        // Connecting to the raw finger point here can create a sudden final sweep.
+                        if (activeStabilizer == 0) currentPath.lineTo(x,y);
+                        else currentPath.lineTo(lastX,lastY);
                         paint.setColor(strokeColor);
                         paint.setAlpha(strokeAlpha);
                         paint.setStrokeWidth(strokeWidth);
