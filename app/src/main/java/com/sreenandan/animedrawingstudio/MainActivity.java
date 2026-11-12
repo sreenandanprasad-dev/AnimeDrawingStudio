@@ -5,6 +5,8 @@ import android.app.AlertDialog;
 import android.os.Bundle;
 import android.content.ContentValues;
 import android.graphics.*;
+import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.MediaStore;
@@ -22,29 +24,56 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
-        getWindow().setStatusBarColor(Color.rgb(28,28,32));
-        getWindow().setNavigationBarColor(Color.rgb(20,20,24));
+        getWindow().setStatusBarColor(Color.rgb(0,0,128));
+        getWindow().setNavigationBarColor(Color.rgb(192,192,192));
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(24,24,28));
+        root.setBackgroundColor(Color.rgb(192,192,192));
+
+        LinearLayout titleBar = new LinearLayout(this);
+        titleBar.setGravity(Gravity.CENTER_VERTICAL);
+        titleBar.setPadding(10,4,8,4);
+        titleBar.setBackgroundColor(Color.rgb(0,0,128));
+        TextView appTitle = new TextView(this);
+        appTitle.setText("✎  Anime Drawing Studio");
+        appTitle.setTextColor(Color.WHITE);
+        appTitle.setTextSize(17);
+        appTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        titleBar.addView(appTitle,new LinearLayout.LayoutParams(-1,38));
+
+        LinearLayout menuBar = new LinearLayout(this);
+        menuBar.setGravity(Gravity.CENTER_VERTICAL);
+        menuBar.setPadding(6,0,6,0);
+        menuBar.setBackgroundColor(Color.rgb(212,208,200));
+        for (String menu : new String[]{"File","Edit","View","Layer","Help"}) {
+            TextView item = new TextView(this);
+            item.setText("  "+menu+"  ");
+            item.setTextColor(Color.BLACK);
+            item.setTextSize(14);
+            menuBar.addView(item,new LinearLayout.LayoutParams(-2,34));
+        }
 
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setPadding(4,4,4,4);
-        addButton(toolbar, "Undo", () -> drawingView.undo());
-        addButton(toolbar, "Redo", () -> drawingView.redo());
-        addButton(toolbar, "Layers", () -> showLayers());
-        addButton(toolbar, "Save", () -> saveImage());
-        addButton(toolbar, "Fit", () -> drawingView.resetView());
+        toolbar.setBackgroundColor(Color.rgb(212,208,200));
+        addButton(toolbar, "↶", () -> drawingView.undo());
+        addButton(toolbar, "↷", () -> drawingView.redo());
+        addButton(toolbar, "▤", () -> showLayers());
+        addButton(toolbar, "💾", () -> saveImage());
+        addButton(toolbar, "⌕", () -> drawingView.resetView());
 
         drawingView = new DrawingView();
-        root.addView(toolbar, new LinearLayout.LayoutParams(-1, 56));
+        root.addView(titleBar,new LinearLayout.LayoutParams(-1,42));
+        root.addView(menuBar,new LinearLayout.LayoutParams(-1,34));
+        root.addView(toolbar, new LinearLayout.LayoutParams(-1, 54));
         root.addView(drawingView, new LinearLayout.LayoutParams(-1, 0, 1));
 
         LinearLayout tools = new LinearLayout(this);
         tools.setOrientation(LinearLayout.VERTICAL);
-        tools.setPadding(12,8,12,10);
+        tools.setPadding(8,6,8,8);
+        tools.setBackgroundColor(Color.rgb(212,208,200));
 
         LinearLayout colors = new LinearLayout(this);
         int[] palette = {Color.BLACK, Color.WHITE, Color.RED, Color.rgb(255,130,0),
@@ -65,8 +94,8 @@ public class MainActivity extends Activity {
 
         LinearLayout options = new LinearLayout(this);
         options.setGravity(Gravity.CENTER_VERTICAL);
-        addButton(options, "Brush", () -> drawingView.setEraser(false));
-        addButton(options, "Eraser", () -> drawingView.setEraser(true));
+        addButton(options, "✎ Brush", () -> drawingView.setEraser(false));
+        addButton(options, "▰ Eraser", () -> drawingView.setEraser(true));
         SeekBar size = new SeekBar(this);
         size.setMax(80);
         size.setProgress(6);
@@ -80,7 +109,7 @@ public class MainActivity extends Activity {
         });
         TextView sizeLabel = new TextView(this);
         sizeLabel.setText("Size");
-        sizeLabel.setTextColor(Color.WHITE);
+        sizeLabel.setTextColor(Color.BLACK);
         options.addView(sizeLabel);
         options.addView(size,new LinearLayout.LayoutParams(0,48,1));
         tools.addView(options);
@@ -89,7 +118,7 @@ public class MainActivity extends Activity {
         opacityRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView opacityLabel = new TextView(this);
         opacityLabel.setText("Opacity");
-        opacityLabel.setTextColor(Color.WHITE);
+        opacityLabel.setTextColor(Color.BLACK);
         opacityRow.addView(opacityLabel);
         SeekBar opacity = new SeekBar(this);
         opacity.setMax(100);
@@ -108,7 +137,7 @@ public class MainActivity extends Activity {
         stabilizerRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView stabilizerLabel = new TextView(this);
         stabilizerLabel.setText("Stabilizer 0");
-        stabilizerLabel.setTextColor(Color.WHITE);
+        stabilizerLabel.setTextColor(Color.BLACK);
         stabilizerRow.addView(stabilizerLabel);
         SeekBar stabilizerBar = new SeekBar(this);
         stabilizerBar.setMax(100);
@@ -168,14 +197,14 @@ public class MainActivity extends Activity {
                     select.setText((drawingView.getActiveLayer()==i ? "● " : "○ ") + names.get(i));
                     select.setTextSize(16);
                     select.setPadding(8,12,8,12);
-                    select.setTextColor(Color.WHITE);
+                    select.setTextColor(Color.BLACK);
                     row.addView(select,new LinearLayout.LayoutParams(0,48,1));
                     select.setOnClickListener(v -> {
                         drawingView.setActiveLayer(index);
                         refresh[0].run();
                     });
                     CheckBox visible = new CheckBox(MainActivity.this);
-                    visible.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
+                    visible.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.BLACK));
                     visible.setChecked(drawingView.isLayerVisible(index));
                     visible.setOnCheckedChangeListener((button,checked) -> drawingView.setLayerVisible(index,checked));
                     row.addView(visible);
