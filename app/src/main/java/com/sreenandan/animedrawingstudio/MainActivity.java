@@ -333,6 +333,26 @@ public class MainActivity extends Activity {
                     visible.setOnCheckedChangeListener((button,checked) -> drawingView.setLayerVisible(index,checked));
                     row.addView(visible);
                     rows.addView(row);
+                    LinearLayout opacityRow = new LinearLayout(MainActivity.this);
+                    opacityRow.setGravity(Gravity.CENTER_VERTICAL);
+                    TextView opacityText = new TextView(MainActivity.this);
+                    opacityText.setText("Opacity " + drawingView.getLayerOpacity(index) + "%");
+                    opacityText.setTextColor(Color.BLACK);
+                    opacityText.setTextSize(11);
+                    opacityRow.addView(opacityText,new LinearLayout.LayoutParams(82,32));
+                    SeekBar layerOpacity = new SeekBar(MainActivity.this);
+                    layerOpacity.setMax(100);
+                    layerOpacity.setProgress(drawingView.getLayerOpacity(index));
+                    layerOpacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                        public void onProgressChanged(SeekBar bar,int value,boolean fromUser) {
+                            drawingView.setLayerOpacity(index,value);
+                            opacityText.setText("Opacity " + value + "%");
+                        }
+                        public void onStartTrackingTouch(SeekBar bar) {}
+                        public void onStopTrackingTouch(SeekBar bar) {}
+                    });
+                    opacityRow.addView(layerOpacity,new LinearLayout.LayoutParams(0,32,1));
+                    rows.addView(opacityRow);
                     View line = new View(MainActivity.this);
                     line.setBackgroundColor(Color.DKGRAY);
                     rows.addView(line,new LinearLayout.LayoutParams(-1,1));
@@ -402,6 +422,7 @@ public class MainActivity extends Activity {
             Bitmap bitmap;
             String name;
             boolean visible=true;
+            int opacity=100;
             Layer(String label) {
                 name=label;
                 bitmap=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
@@ -416,6 +437,7 @@ public class MainActivity extends Activity {
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint previewPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint layerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Bitmap pencilTexture;
         private final Path currentPath = new Path();
         private boolean strokeInProgress=false;
@@ -519,6 +541,11 @@ public class MainActivity extends Activity {
         int getActiveLayer() { return activeLayer; }
         String getActiveLayerName() { return layers.get(activeLayer).name; }
         boolean isLayerVisible(int index) { return layers.get(index).visible; }
+        int getLayerOpacity(int index) { return layers.get(index).opacity; }
+        void setLayerOpacity(int index,int opacity) {
+            layers.get(index).opacity=Math.max(0,Math.min(100,opacity));
+            invalidate();
+        }
         void setLayerVisible(int index,boolean visible) {
             layers.get(index).visible=visible;
             invalidate();
@@ -700,7 +727,11 @@ public class MainActivity extends Activity {
             Bitmap merged=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
             Canvas c=new Canvas(merged);
             c.drawColor(Color.WHITE);
-            for (Layer layer:layers) if (layer.visible) c.drawBitmap(layer.bitmap,0,0,null);
+            for (Layer layer:layers) if (layer.visible && layer.opacity>0) {
+                layerPaint.setAlpha(layer.opacity*255/100);
+                c.drawBitmap(layer.bitmap,0,0,layerPaint);
+            }
+            layerPaint.setAlpha(255);
             return merged;
         }
 
@@ -716,7 +747,11 @@ public class MainActivity extends Activity {
             Paint background=new Paint();
             background.setColor(Color.WHITE);
             canvas.drawRect(0,0,1600,2200,background);
-            for (Layer layer:layers) if (layer.visible) canvas.drawBitmap(layer.bitmap,0,0,null);
+            for (Layer layer:layers) if (layer.visible && layer.opacity>0) {
+                layerPaint.setAlpha(layer.opacity*255/100);
+                canvas.drawBitmap(layer.bitmap,0,0,layerPaint);
+            }
+            layerPaint.setAlpha(255);
             if (strokeInProgress && !strokeEraser) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                 drawSymmetricPath(canvas,currentPath,previewPaint);
