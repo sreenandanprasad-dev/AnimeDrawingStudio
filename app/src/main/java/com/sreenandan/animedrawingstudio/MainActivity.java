@@ -21,6 +21,8 @@ public class MainActivity extends Activity {
     private float brushSize = 8f;
     private int brushOpacity = 100;
     private int stabilizer = 0;
+    private Button brushToolButton, eraserToolButton, fillToolButton;
+    private TextView activeToolLabel;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -92,11 +94,32 @@ public class MainActivity extends Activity {
         }
         tools.addView(colors);
 
+        activeToolLabel = new TextView(this);
+        activeToolLabel.setText("ACTIVE TOOL: BRUSH");
+        activeToolLabel.setTextColor(Color.WHITE);
+        activeToolLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        activeToolLabel.setTextSize(12);
+        activeToolLabel.setPadding(8,5,8,5);
+        activeToolLabel.setBackgroundColor(Color.rgb(0,0,128));
+        tools.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,30));
+
         LinearLayout options = new LinearLayout(this);
         options.setGravity(Gravity.CENTER_VERTICAL);
-        addButton(options, "✎ Brush", () -> drawingView.setEraser(false));
-        addButton(options, "▰ Eraser", () -> drawingView.setEraser(true));
-        addButton(options, "▧ Fill", () -> drawingView.setBucketTool(true));
+        brushToolButton = addButton(options, "✎ Brush", () -> {
+            drawingView.setEraser(false);
+            drawingView.setBucketTool(false);
+            setActiveTool("BRUSH");
+        });
+        eraserToolButton = addButton(options, "▰ Eraser", () -> {
+            drawingView.setEraser(true);
+            drawingView.setBucketTool(false);
+            setActiveTool("ERASER");
+        });
+        fillToolButton = addButton(options, "▧ Fill", () -> {
+            drawingView.setBucketTool(true);
+            setActiveTool("FILL");
+        });
+        setActiveTool("BRUSH");
         SeekBar size = new SeekBar(this);
         size.setMax(80);
         size.setProgress(6);
@@ -166,7 +189,25 @@ public class MainActivity extends Activity {
         return d;
     }
 
-    private void addButton(LinearLayout parent, String label, Runnable action) {
+    private void setActiveTool(String tool) {
+        activeToolLabel.setText("ACTIVE TOOL: " + tool);
+        styleToolButton(brushToolButton,"BRUSH".equals(tool));
+        styleToolButton(eraserToolButton,"ERASER".equals(tool));
+        styleToolButton(fillToolButton,"FILL".equals(tool));
+    }
+
+    private void styleToolButton(Button button, boolean active) {
+        if (button == null) return;
+        button.setTextColor(active ? Color.WHITE : Color.BLACK);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(active ? Color.rgb(0,0,128) : Color.rgb(212,208,200));
+        background.setCornerRadius(2);
+        background.setStroke(active ? 3 : 1,
+                active ? Color.rgb(255,255,120) : Color.rgb(90,90,90));
+        button.setBackground(background);
+    }
+
+    private Button addButton(LinearLayout parent, String label, Runnable action) {
         Button b = new Button(this);
         b.setText(label);
         b.setTextSize(12);
@@ -184,6 +225,7 @@ public class MainActivity extends Activity {
         lp.setMargins(2,1,2,1);
         parent.addView(b,lp);
         b.setOnClickListener(v -> action.run());
+        return b;
     }
 
     private void showLayers() {
