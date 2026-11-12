@@ -23,6 +23,7 @@ public class MainActivity extends Activity {
     private int stabilizer = 0;
     private int brushPreset = 0;
     private Button brushToolButton, eraserToolButton, fillToolButton;
+    private Button lineToolButton, rectToolButton, ellipseToolButton;
     private TextView activeToolLabel;
 
     @Override public void onCreate(Bundle state) {
@@ -87,16 +88,37 @@ public class MainActivity extends Activity {
         brushToolButton = addButton(toolRow, "✎", () -> {
             drawingView.setEraser(false);
             drawingView.setBucketTool(false);
+            drawingView.setShapeTool(0);
             setActiveTool("BRUSH");
         });
         eraserToolButton = addButton(toolRow, "▰", () -> {
             drawingView.setEraser(true);
             drawingView.setBucketTool(false);
+            drawingView.setShapeTool(0);
             setActiveTool("ERASER");
         });
         fillToolButton = addButton(toolRow, "▧", () -> {
             drawingView.setBucketTool(true);
+            drawingView.setShapeTool(0);
             setActiveTool("FILL");
+        });
+        lineToolButton = addButton(toolRow, "╱", () -> {
+            drawingView.setEraser(false);
+            drawingView.setBucketTool(false);
+            drawingView.setShapeTool(1);
+            setActiveTool("LINE");
+        });
+        rectToolButton = addButton(toolRow, "□", () -> {
+            drawingView.setEraser(false);
+            drawingView.setBucketTool(false);
+            drawingView.setShapeTool(2);
+            setActiveTool("RECT");
+        });
+        ellipseToolButton = addButton(toolRow, "○", () -> {
+            drawingView.setEraser(false);
+            drawingView.setBucketTool(false);
+            drawingView.setShapeTool(3);
+            setActiveTool("ELLIPSE");
         });
         activeToolLabel = new TextView(this);
         activeToolLabel.setText("BRUSH");
@@ -226,6 +248,9 @@ public class MainActivity extends Activity {
         styleToolButton(brushToolButton,"BRUSH".equals(tool));
         styleToolButton(eraserToolButton,"ERASER".equals(tool));
         styleToolButton(fillToolButton,"FILL".equals(tool));
+        styleToolButton(lineToolButton,"LINE".equals(tool));
+        styleToolButton(rectToolButton,"RECT".equals(tool));
+        styleToolButton(ellipseToolButton,"ELLIPSE".equals(tool));
     }
 
     private void styleToolButton(Button button, boolean active) {
@@ -405,6 +430,9 @@ public class MainActivity extends Activity {
         private float reversalScore=0f;
         private boolean eraser=false;
         private boolean bucketTool=false;
+        private int shapeTool=0;
+        private boolean shapeInProgress=false;
+        private float shapeStartX,shapeStartY,shapeEndX,shapeEndY;
         private float zoom=1f, panX=0f, panY=0f, rotation=0f;
         private float lastMidX, lastMidY, lastAngle;
         private boolean multiTouch=false, drawingGesture=false;
@@ -511,8 +539,9 @@ public class MainActivity extends Activity {
         void renameActiveLayer(String name) {
             layers.get(activeLayer).name=name;
         }
-        void setEraser(boolean value) { eraser=value; bucketTool=false; }
-        void setBucketTool(boolean value) { bucketTool=value; eraser=false; invalidate(); }
+        void setEraser(boolean value) { eraser=value; bucketTool=false; shapeTool=0; }
+        void setBucketTool(boolean value) { bucketTool=value; eraser=false; shapeTool=0; invalidate(); }
+        void setShapeTool(int value) { shapeTool=Math.max(0,Math.min(3,value)); eraser=false; bucketTool=false; invalidate(); }
         void setBrushSize(float value) { brushSize=value; paint.setStrokeWidth(value); }
         void setBrushPreset(int value) { brushPreset=Math.max(0,Math.min(4,value)); }
         void setBrushOpacity(int value) { brushOpacity=Math.max(1,Math.min(100,value)); }
@@ -663,7 +692,24 @@ public class MainActivity extends Activity {
                 previewPaint.setColorFilter(null);
                 previewPaint.setMaskFilter(null);
             }
+            if (shapeInProgress) {
+                configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
+                drawShape(canvas,previewPaint,shapeTool,shapeStartX,shapeStartY,shapeEndX,shapeEndY);
+                previewPaint.setShader(null);
+                previewPaint.setColorFilter(null);
+                previewPaint.setMaskFilter(null);
+            }
             canvas.restore();
+        }
+
+        private void drawShape(Canvas target,Paint shapePaint,int tool,float x1,float y1,float x2,float y2) {
+            if (tool==1) target.drawLine(x1,y1,x2,y2,shapePaint);
+            else {
+                float left=Math.min(x1,x2), top=Math.min(y1,y2);
+                float right=Math.max(x1,x2), bottom=Math.max(y1,y2);
+                if (tool==2) target.drawRect(left,top,right,bottom,shapePaint);
+                else if (tool==3) target.drawOval(left,top,right,bottom,shapePaint);
+            }
         }
 
         @Override public boolean onTouchEvent(android.view.MotionEvent event) {
@@ -706,7 +752,15 @@ public class MainActivity extends Activity {
                     if (strokePreset==3) strokeWidth*=2.2f;
                     if (strokePreset==4) strokeWidth*=2.8f;
                     strokeEraser=eraser;
-                    strokeInProgress=true;
+                    if (shapeTool>0) {
+                        shapeStartX=shapeEndX=x;
+                        shapeStartY=shapeEndY=y;
+                        shapeInProgress=true;
+                        strokeInProgress=false;
+                    } else {
+                        shapeInProgress=false;
+                        strokeInProgress=true;
+                    }
                     return true;
 
                 case MotionEvent.ACTION_POINTER_DOWN:
@@ -746,7 +800,14 @@ public class MainActivity extends Activity {
                         invalidate();
                         return true;
                     }
-                    if (multiTouch || !drawingGesture || !strokeInProgress) return true;
+                    if (multiTouch || !drawingGesture) return true;
+                    if (shapeInProgress) {
+                        shapeEndX=x;
+                        shapeEndY=y;
+                        invalidate();
+                        return true;
+                    }
+                    if (!strokeInProgress) return true;
                     float touchDX=event.getX()-lastTouchX;
                     float touchDY=event.getY()-lastTouchY;
                     long eventTime=event.getEventTime();
@@ -806,8 +867,19 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_UP:
-                    if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; strokeInProgress=false; currentPath.reset(); invalidate(); return true; }
+                    if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; strokeInProgress=false; shapeInProgress=false; currentPath.reset(); invalidate(); return true; }
                     drawingGesture=false;
+                    if (shapeInProgress) {
+                        shapeEndX=x;
+                        shapeEndY=y;
+                        configureStrokePaint(paint,strokePreset,strokeColor,brushOpacity,strokeWidth);
+                        drawShape(new Canvas(layers.get(activeLayer).bitmap),paint,shapeTool,
+                                shapeStartX,shapeStartY,shapeEndX,shapeEndY);
+                        paint.setShader(null);
+                        paint.setColorFilter(null);
+                        paint.setMaskFilter(null);
+                        shapeInProgress=false;
+                    }
                     if (strokeInProgress) {
                         // Finish at the filtered brush position when stabilization is active.
                         // Connecting to the raw finger point here can create a sudden final sweep.
@@ -839,8 +911,10 @@ public class MainActivity extends Activity {
                     multiTouch=false;
                     drawingGesture=false;
                     strokeInProgress=false;
+                    shapeInProgress=false;
                     currentPath.reset();
                     paint.setXfermode(null);
+                    invalidate();
                     return true;
             }
             return true;
