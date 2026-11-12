@@ -45,6 +45,16 @@ public class MainActivity extends Activity {
         appTitle.setTypeface(Typeface.DEFAULT_BOLD);
         titleBar.addView(appTitle,new LinearLayout.LayoutParams(-1,38));
 
+        LinearLayout toolbar = new LinearLayout(this);
+        toolbar.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar.setPadding(3,2,3,2);
+        toolbar.setBackgroundColor(Color.rgb(212,208,200));
+        addButton(toolbar,"↶",() -> drawingView.undo());
+        addButton(toolbar,"↷",() -> drawingView.redo());
+        addButton(toolbar,"▤",() -> showLayers());
+        addButton(toolbar,"Save",() -> saveImage());
+        addButton(toolbar,"⌕",() -> drawingView.resetView());
+
         drawingView = new DrawingView();
         root.addView(titleBar,new LinearLayout.LayoutParams(-1,34));
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, 42));
