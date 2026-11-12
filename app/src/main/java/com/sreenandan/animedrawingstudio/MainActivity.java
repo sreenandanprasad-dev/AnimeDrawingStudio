@@ -241,6 +241,13 @@ public class MainActivity extends Activity {
         }
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint previewPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Path currentPath = new Path();
+        private boolean strokeInProgress=false;
+        private int strokeColor=Color.BLACK;
+        private int strokeAlpha=255;
+        private float strokeWidth=8f;
+        private boolean strokeEraser=false;
         private final ArrayList<Layer> layers = new ArrayList<>();
         private final ArrayList<Snapshot> undo = new ArrayList<>();
         private final ArrayList<Snapshot> redo = new ArrayList<>();
@@ -390,6 +397,15 @@ public class MainActivity extends Activity {
             background.setColor(Color.WHITE);
             canvas.drawRect(0,0,1600,2200,background);
             for (Layer layer:layers) if (layer.visible) canvas.drawBitmap(layer.bitmap,0,0,null);
+            if (strokeInProgress && !strokeEraser) {
+                previewPaint.setColor(strokeColor);
+                previewPaint.setAlpha(strokeAlpha);
+                previewPaint.setStyle(Paint.Style.STROKE);
+                previewPaint.setStrokeCap(Paint.Cap.ROUND);
+                previewPaint.setStrokeJoin(Paint.Join.ROUND);
+                previewPaint.setStrokeWidth(strokeWidth);
+                canvas.drawPath(currentPath,previewPaint);
+            }
             canvas.restore();
         }
 
@@ -414,6 +430,13 @@ public class MainActivity extends Activity {
                     }
                     saveUndo();
                     lastX=x; lastY=y;
+                    currentPath.reset();
+                    currentPath.moveTo(x,y);
+                    strokeColor=currentColor;
+                    strokeAlpha=(int)(255f*brushOpacity/100f);
+                    strokeWidth=brushSize;
+                    strokeEraser=eraser;
+                    strokeInProgress=true;
                     return true;
 
                 case MotionEvent.ACTION_POINTER_DOWN:
@@ -453,13 +476,8 @@ public class MainActivity extends Activity {
                         invalidate();
                         return true;
                     }
-                    if (multiTouch || !drawingGesture) return true;
-                    paint.setColor(currentColor);
-                    paint.setAlpha((int)(255f*brushOpacity/100f));
-                    paint.setStrokeWidth(brushSize);
-                    paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
-                    Canvas c=new Canvas(layers.get(activeLayer).bitmap);
-                    c.drawLine(lastX,lastY,x,y,paint);
+                    if (multiTouch || !drawingGesture || !strokeInProgress) return true;
+                    currentPath.lineTo(x,y);
                     lastX=x; lastY=y;
                     invalidate();
                     return true;
@@ -469,20 +487,27 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_UP:
-                    if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; return true; }
+                    if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; strokeInProgress=false; currentPath.reset(); invalidate(); return true; }
                     drawingGesture=false;
-                    paint.setColor(currentColor);
-                    paint.setAlpha((int)(255f*brushOpacity/100f));
-                    paint.setStrokeWidth(brushSize);
-                    paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
-                    new Canvas(layers.get(activeLayer).bitmap).drawPoint(x,y,paint);
-                    paint.setXfermode(null);
+                    if (strokeInProgress) {
+                        currentPath.lineTo(x,y);
+                        paint.setColor(strokeColor);
+                        paint.setAlpha(strokeAlpha);
+                        paint.setStrokeWidth(strokeWidth);
+                        paint.setXfermode(strokeEraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
+                        new Canvas(layers.get(activeLayer).bitmap).drawPath(currentPath,paint);
+                        paint.setXfermode(null);
+                    }
+                    strokeInProgress=false;
+                    currentPath.reset();
                     invalidate();
                     return true;
 
                 case MotionEvent.ACTION_CANCEL:
                     multiTouch=false;
                     drawingGesture=false;
+                    strokeInProgress=false;
+                    currentPath.reset();
                     paint.setXfermode(null);
                     return true;
             }
