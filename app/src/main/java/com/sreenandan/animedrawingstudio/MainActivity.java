@@ -502,13 +502,21 @@ public class MainActivity extends Activity {
                     if (multiTouch || !drawingGesture || !strokeInProgress) return true;
                     if (activeStabilizer == 0) {
                         currentPath.lineTo(x,y);
+                        lastX=x;
+                        lastY=y;
                     } else {
-                        float amount = activeStabilizer / 100f;
-                        float controlX = lastX + (x-lastX) * amount * 0.5f;
-                        float controlY = lastY + (y-lastY) * amount * 0.5f;
-                        currentPath.quadTo(controlX,controlY,x,y);
+                        // Low-pass filtering: higher values smooth more, with a bounded response
+                        // so the brush follows the finger instead of feeling excessively delayed.
+                        float strength = activeStabilizer / 100f;
+                        float response = 1f - (0.88f * strength);
+                        float filteredX = lastX + (x-lastX) * response;
+                        float filteredY = lastY + (y-lastY) * response;
+                        float midX = (lastX + filteredX) * 0.5f;
+                        float midY = (lastY + filteredY) * 0.5f;
+                        currentPath.quadTo(lastX,lastY,midX,midY);
+                        lastX=filteredX;
+                        lastY=filteredY;
                     }
-                    lastX=x; lastY=y;
                     invalidate();
                     return true;
 
