@@ -189,10 +189,12 @@ public class MainActivity extends Activity {
         android.content.SharedPreferences preferences = getSharedPreferences("drawing_ui",MODE_PRIVATE);
         final boolean[] rightHanded = {preferences.getBoolean("right_handed",true)};
         tools.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
+        toolbar.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
         Button handButton = addButton(toolbar,rightHanded[0] ? "Right" : "Left",() -> {
             rightHanded[0] = !rightHanded[0];
             preferences.edit().putBoolean("right_handed",rightHanded[0]).apply();
             tools.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
+            toolbar.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
             handButtonLabelRefresh(toolbar,rightHanded[0]);
         });
         handButton.setTextSize(10);
@@ -249,8 +251,8 @@ public class MainActivity extends Activity {
         states.addState(new int[]{android.R.attr.state_pressed},bevel(true));
         states.addState(new int[]{},bevel(false));
         b.setBackground(states);
-        b.setMinHeight(42);
-        b.setMinimumHeight(42);
+        b.setMinHeight(32);
+        b.setMinimumHeight(32);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0,38,1);
         lp.setMargins(2,1,2,1);
         parent.addView(b,lp);
