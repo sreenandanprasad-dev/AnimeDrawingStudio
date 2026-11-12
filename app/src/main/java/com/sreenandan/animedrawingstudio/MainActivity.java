@@ -21,6 +21,7 @@ public class MainActivity extends Activity {
     private float brushSize = 8f;
     private int brushOpacity = 100;
     private int stabilizer = 0;
+    private int brushPreset = 0;
     private Button brushToolButton, eraserToolButton, fillToolButton;
     private TextView activeToolLabel;
 
@@ -137,6 +138,28 @@ public class MainActivity extends Activity {
         options.addView(sizeLabel);
         options.addView(size,new LinearLayout.LayoutParams(0,48,1));
         tools.addView(options);
+
+        LinearLayout presetRow = new LinearLayout(this);
+        presetRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView presetLabel = new TextView(this);
+        presetLabel.setText("Brush");
+        presetLabel.setTextColor(Color.BLACK);
+        presetRow.addView(presetLabel);
+        Spinner presets = new Spinner(this);
+        String[] presetNames = {"G-Pen", "Mapping Pen", "Pencil", "Marker", "Airbrush"};
+        ArrayAdapter<String> presetAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, presetNames);
+        presetAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        presets.setAdapter(presetAdapter);
+        presets.setSelection(brushPreset);
+        presets.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                brushPreset = position;
+                drawingView.setBrushPreset(position);
+            }
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+        presetRow.addView(presets,new LinearLayout.LayoutParams(0,44,1));
+        tools.addView(presetRow);
 
         LinearLayout opacityRow = new LinearLayout(this);
         opacityRow.setGravity(Gravity.CENTER_VERTICAL);
