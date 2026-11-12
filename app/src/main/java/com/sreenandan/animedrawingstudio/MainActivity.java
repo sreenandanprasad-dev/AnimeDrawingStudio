@@ -125,7 +125,7 @@ public class MainActivity extends Activity {
                     row.addView(select,new LinearLayout.LayoutParams(0,48,1));
                     select.setOnClickListener(v -> {
                         drawingView.setActiveLayer(index);
-                        refresh.run();
+                        refresh[0].run();
                     });
                     CheckBox visible = new CheckBox(MainActivity.this);
                     visible.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.WHITE));
@@ -139,18 +139,18 @@ public class MainActivity extends Activity {
                 }
             }
         };
-        refresh.run();
+        refresh[0].run();
 
         LinearLayout actions = new LinearLayout(this);
         addButton(actions,"+ Add",() -> {
-            if (drawingView.addLayer()) refresh.run();
+            if (drawingView.addLayer()) refresh[0].run();
             else Toast.makeText(this,"Layer limit reached (6)",Toast.LENGTH_SHORT).show();
         });
         addButton(actions,"Rename",() -> renameLayer(refresh[0]));
         addButton(actions,"Delete",() -> {
             if (!drawingView.deleteActiveLayer())
                 Toast.makeText(this,"Keep at least one layer",Toast.LENGTH_SHORT).show();
-            refresh.run();
+            refresh[0].run();
         });
         panel.addView(actions,new LinearLayout.LayoutParams(-1,52));
         dialog.setOnShowListener(v -> dialog.getWindow().setLayout(
@@ -171,7 +171,7 @@ public class MainActivity extends Activity {
                 .setPositiveButton("Save",(d,w) -> {
                     String name=input.getText().toString().trim();
                     if (!name.isEmpty()) drawingView.renameActiveLayer(name);
-                    refresh.run();
+                    refresh[0].run();
                 }).show();
     }
 
