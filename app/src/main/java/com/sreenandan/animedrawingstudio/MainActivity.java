@@ -108,7 +108,8 @@ public class MainActivity extends Activity {
                 .setNegativeButton("Close",null)
                 .create();
 
-        Runnable refresh = new Runnable() {
+        final Runnable[] refresh = new Runnable[1];
+        refresh[0] = new Runnable() {
             @Override public void run() {
                 rows.removeAllViews();
                 ArrayList<String> names = drawingView.getLayerNames();
@@ -145,7 +146,7 @@ public class MainActivity extends Activity {
             if (drawingView.addLayer()) refresh.run();
             else Toast.makeText(this,"Layer limit reached (6)",Toast.LENGTH_SHORT).show();
         });
-        addButton(actions,"Rename",() -> renameLayer(refresh));
+        addButton(actions,"Rename",() -> renameLayer(refresh[0]));
         addButton(actions,"Delete",() -> {
             if (!drawingView.deleteActiveLayer())
                 Toast.makeText(this,"Keep at least one layer",Toast.LENGTH_SHORT).show();
