@@ -17,6 +17,7 @@ public class MainActivity extends Activity {
     private DrawingView drawingView;
     private int currentColor = Color.BLACK;
     private float brushSize = 8f;
+    private int brushOpacity = 100;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -76,9 +77,33 @@ public class MainActivity extends Activity {
             public void onStartTrackingTouch(SeekBar b) {}
             public void onStopTrackingTouch(SeekBar b) {}
         });
+        TextView sizeLabel = new TextView(this);
+        sizeLabel.setText("Size");
+        sizeLabel.setTextColor(Color.WHITE);
+        options.addView(sizeLabel);
         options.addView(size,new LinearLayout.LayoutParams(0,48,1));
         tools.addView(options);
-        root.addView(tools,new LinearLayout.LayoutParams(-1,104));
+
+        LinearLayout opacityRow = new LinearLayout(this);
+        opacityRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView opacityLabel = new TextView(this);
+        opacityLabel.setText("Opacity");
+        opacityLabel.setTextColor(Color.WHITE);
+        opacityRow.addView(opacityLabel);
+        SeekBar opacity = new SeekBar(this);
+        opacity.setMax(100);
+        opacity.setProgress(100);
+        opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar b,int value,boolean user) {
+                brushOpacity = Math.max(1,value);
+                drawingView.setBrushOpacity(brushOpacity);
+            }
+            public void onStartTrackingTouch(SeekBar b) {}
+            public void onStopTrackingTouch(SeekBar b) {}
+        });
+        opacityRow.addView(opacity,new LinearLayout.LayoutParams(0,44,1));
+        tools.addView(opacityRow);
+        root.addView(tools,new LinearLayout.LayoutParams(-1,148));
         setContentView(root);
     }
 
@@ -294,6 +319,7 @@ public class MainActivity extends Activity {
         }
         void setEraser(boolean value) { eraser=value; }
         void setBrushSize(float value) { brushSize=value; paint.setStrokeWidth(value); }
+        void setBrushOpacity(int value) { brushOpacity=Math.max(1,Math.min(100,value)); }
 
         void clearHistory() {
             for (Snapshot s:undo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
@@ -429,6 +455,7 @@ public class MainActivity extends Activity {
                     }
                     if (multiTouch || !drawingGesture) return true;
                     paint.setColor(currentColor);
+                    paint.setAlpha((int)(255f*brushOpacity/100f));
                     paint.setStrokeWidth(brushSize);
                     paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
                     Canvas c=new Canvas(layers.get(activeLayer).bitmap);
@@ -445,6 +472,7 @@ public class MainActivity extends Activity {
                     if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; return true; }
                     drawingGesture=false;
                     paint.setColor(currentColor);
+                    paint.setAlpha((int)(255f*brushOpacity/100f));
                     paint.setStrokeWidth(brushSize);
                     paint.setXfermode(eraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
                     new Canvas(layers.get(activeLayer).bitmap).drawPoint(x,y,paint);
