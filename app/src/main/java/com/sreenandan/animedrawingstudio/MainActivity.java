@@ -275,6 +275,10 @@ public class MainActivity extends Activity {
         private final ArrayList<Snapshot> redo = new ArrayList<>();
         private int activeLayer=0;
         private float lastX,lastY;
+        // Raw finger movement is tracked separately from the smoothed brush position.
+        private float lastTouchX,lastTouchY,previousTouchDX,previousTouchDY;
+        private long lastTouchTime;
+        private float reversalScore=0f;
         private boolean eraser=false;
         private float zoom=1f, panX=0f, panY=0f, rotation=0f;
         private float lastMidX, lastMidY, lastAngle;
@@ -453,6 +457,10 @@ public class MainActivity extends Activity {
                     }
                     saveUndo();
                     lastX=x; lastY=y;
+                    lastTouchX=event.getX(); lastTouchY=event.getY();
+                    previousTouchDX=0f; previousTouchDY=0f;
+                    lastTouchTime=event.getEventTime();
+                    reversalScore=0f;
                     currentPath.reset();
                     currentPath.moveTo(x,y);
                     strokeColor=currentColor;
@@ -500,18 +508,46 @@ public class MainActivity extends Activity {
                         return true;
                     }
                     if (multiTouch || !drawingGesture || !strokeInProgress) return true;
+                    float touchDX=event.getX()-lastTouchX;
+                    float touchDY=event.getY()-lastTouchY;
+                    long eventTime=event.getEventTime();
+                    long elapsed=Math.max(1L,eventTime-lastTouchTime);
+                    float speed=(float)Math.hypot(touchDX,touchDY)/elapsed;
+                    float previousLength=(float)Math.hypot(previousTouchDX,previousTouchDY);
+                    float currentLength=(float)Math.hypot(touchDX,touchDY);
+                    if (speed>0.35f && previousLength>1.5f && currentLength>1.5f) {
+                        float directionDot=(touchDX*previousTouchDX+touchDY*previousTouchDY)
+                                /(currentLength*previousLength);
+                        if (directionDot < -0.35f) {
+                            // Repeated quick reversals are characteristic of colouring strokes.
+                            reversalScore=Math.min(3f,reversalScore+1f);
+                        } else {
+                            reversalScore=Math.max(0f,reversalScore-0.08f);
+                        }
+                    } else {
+                        reversalScore=Math.max(0f,reversalScore-0.08f);
+                    }
+                    if (currentLength>1f) {
+                        previousTouchDX=touchDX;
+                        previousTouchDY=touchDY;
+                    }
+                    lastTouchX=event.getX();
+                    lastTouchY=event.getY();
+                    lastTouchTime=eventTime;
+
                     if (activeStabilizer == 0) {
                         currentPath.lineTo(x,y);
                         lastX=x;
                         lastY=y;
                     } else {
-                        // Low-pass filtering: higher values smooth more, with a bounded response
-                        // so the brush follows the finger instead of feeling excessively delayed.
+                        // The normal stabilizer smooths deliberate strokes. During quick,
+                        // repeated back-and-forth movements it automatically loosens so
+                        // colouring stays responsive without turning the stabilizer off.
                         float strength = activeStabilizer / 100f;
-                        // Non-linear response makes every slider step progressively steadier.
-                        // At 100 the brush follows a much slower, smoother filtered path.
                         float response = (float)Math.pow(1f - strength, 2.4f);
                         response = Math.max(0.012f, response);
+                        float colouringAssist=Math.min(0.90f,reversalScore*0.30f);
+                        response += (1f-response)*colouringAssist;
                         float filteredX = lastX + (x-lastX) * response;
                         float filteredY = lastY + (y-lastY) * response;
                         float midX = (lastX + filteredX) * 0.5f;
