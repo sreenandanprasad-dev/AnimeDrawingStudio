@@ -18,6 +18,7 @@ public class MainActivity extends Activity {
     private int currentColor = Color.BLACK;
     private float brushSize = 8f;
     private int brushOpacity = 100;
+    private int stabilizer = 0;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -103,7 +104,27 @@ public class MainActivity extends Activity {
         });
         opacityRow.addView(opacity,new LinearLayout.LayoutParams(0,44,1));
         tools.addView(opacityRow);
-        root.addView(tools,new LinearLayout.LayoutParams(-1,148));
+        LinearLayout stabilizerRow = new LinearLayout(this);
+        stabilizerRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView stabilizerLabel = new TextView(this);
+        stabilizerLabel.setText("Stabilizer 0");
+        stabilizerLabel.setTextColor(Color.WHITE);
+        stabilizerRow.addView(stabilizerLabel);
+        SeekBar stabilizerBar = new SeekBar(this);
+        stabilizerBar.setMax(100);
+        stabilizerBar.setProgress(0);
+        stabilizerBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar b,int value,boolean user) {
+                stabilizer = value;
+                stabilizerLabel.setText("Stabilizer " + value);
+                drawingView.setStabilizer(value);
+            }
+            public void onStartTrackingTouch(SeekBar b) {}
+            public void onStopTrackingTouch(SeekBar b) {}
+        });
+        stabilizerRow.addView(stabilizerBar,new LinearLayout.LayoutParams(0,44,1));
+        tools.addView(stabilizerRow);
+        root.addView(tools,new LinearLayout.LayoutParams(-1,192));
         setContentView(root);
     }
 
@@ -247,6 +268,7 @@ public class MainActivity extends Activity {
         private int strokeColor=Color.BLACK;
         private int strokeAlpha=255;
         private float strokeWidth=8f;
+        private int activeStabilizer=0;
         private boolean strokeEraser=false;
         private final ArrayList<Layer> layers = new ArrayList<>();
         private final ArrayList<Snapshot> undo = new ArrayList<>();
@@ -327,6 +349,7 @@ public class MainActivity extends Activity {
         void setEraser(boolean value) { eraser=value; }
         void setBrushSize(float value) { brushSize=value; paint.setStrokeWidth(value); }
         void setBrushOpacity(int value) { brushOpacity=Math.max(1,Math.min(100,value)); }
+        void setStabilizer(int value) { activeStabilizer=Math.max(0,Math.min(100,value)); }
 
         void clearHistory() {
             for (Snapshot s:undo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
@@ -477,7 +500,14 @@ public class MainActivity extends Activity {
                         return true;
                     }
                     if (multiTouch || !drawingGesture || !strokeInProgress) return true;
-                    currentPath.lineTo(x,y);
+                    if (activeStabilizer == 0) {
+                        currentPath.lineTo(x,y);
+                    } else {
+                        float amount = activeStabilizer / 100f;
+                        float controlX = lastX + (x-lastX) * amount * 0.5f;
+                        float controlY = lastY + (y-lastY) * amount * 0.5f;
+                        currentPath.quadTo(controlX,controlY,x,y);
+                    }
                     lastX=x; lastY=y;
                     invalidate();
                     return true;
