@@ -381,6 +381,7 @@ public class MainActivity extends Activity {
         private int strokeColor=Color.BLACK;
         private int strokeAlpha=255;
         private float strokeWidth=8f;
+        private int strokePreset=0;
         private int activeStabilizer=0;
         private boolean strokeEraser=false;
         private final ArrayList<Layer> layers = new ArrayList<>();
@@ -467,6 +468,7 @@ public class MainActivity extends Activity {
         void setEraser(boolean value) { eraser=value; bucketTool=false; }
         void setBucketTool(boolean value) { bucketTool=value; eraser=false; invalidate(); }
         void setBrushSize(float value) { brushSize=value; paint.setStrokeWidth(value); }
+        void setBrushPreset(int value) { brushPreset=Math.max(0,Math.min(4,value)); }
         void setBrushOpacity(int value) { brushOpacity=Math.max(1,Math.min(100,value)); }
         void setStabilizer(int value) { activeStabilizer=Math.max(0,Math.min(100,value)); }
 
@@ -615,7 +617,9 @@ public class MainActivity extends Activity {
                 previewPaint.setStrokeCap(Paint.Cap.ROUND);
                 previewPaint.setStrokeJoin(Paint.Join.ROUND);
                 previewPaint.setStrokeWidth(strokeWidth);
+                previewPaint.setMaskFilter(strokePreset==4 ? new BlurMaskFilter(strokeWidth*0.65f,BlurMaskFilter.Blur.NORMAL) : null);
                 canvas.drawPath(currentPath,previewPaint);
+                previewPaint.setMaskFilter(null);
             }
             canvas.restore();
         }
@@ -654,6 +658,11 @@ public class MainActivity extends Activity {
                     strokeColor=currentColor;
                     strokeAlpha=(int)(255f*brushOpacity/100f);
                     strokeWidth=brushSize;
+                    strokePreset=brushPreset;
+                    if (strokePreset==1) strokeWidth*=0.72f;
+                    if (strokePreset==2) strokeWidth*=0.82f;
+                    if (strokePreset==3) strokeWidth*=2.2f;
+                    if (strokePreset==4) strokeWidth*=2.8f;
                     strokeEraser=eraser;
                     strokeInProgress=true;
                     return true;
@@ -763,11 +772,14 @@ public class MainActivity extends Activity {
                         if (activeStabilizer == 0) currentPath.lineTo(x,y);
                         else currentPath.lineTo(lastX,lastY);
                         paint.setColor(strokeColor);
-                        paint.setAlpha(strokeAlpha);
+                        int presetAlpha=strokePreset==2 ? 185 : (strokePreset==3 ? 105 : (strokePreset==4 ? 65 : strokeAlpha));
+                        paint.setAlpha((int)(presetAlpha*(strokeAlpha/255f)));
                         paint.setStrokeWidth(strokeWidth);
+                        paint.setMaskFilter(strokePreset==4 ? new BlurMaskFilter(strokeWidth*0.65f,BlurMaskFilter.Blur.NORMAL) : null);
                         paint.setXfermode(strokeEraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
                         new Canvas(layers.get(activeLayer).bitmap).drawPath(currentPath,paint);
                         paint.setXfermode(null);
+                        paint.setMaskFilter(null);
                     }
                     strokeInProgress=false;
                     currentPath.reset();
