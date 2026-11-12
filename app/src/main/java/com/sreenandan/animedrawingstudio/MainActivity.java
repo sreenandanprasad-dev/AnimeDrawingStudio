@@ -222,8 +222,8 @@ public class MainActivity extends Activity {
         private int activeLayer=0;
         private float lastX,lastY;
         private boolean eraser=false;
-        private float zoom=1f, panX=0f, panY=0f;
-        private float lastMidX, lastMidY;
+        private float zoom=1f, panX=0f, panY=0f, rotation=0f;
+        private float lastMidX, lastMidY, lastAngle;
         private boolean multiTouch=false;
         private final ScaleGestureDetector scaleDetector;
 
@@ -242,11 +242,10 @@ public class MainActivity extends Activity {
                     float oldZoom=zoom;
                     zoom=Math.max(1f,Math.min(5f,zoom*detector.getScaleFactor()));
                     float factor=zoom/oldZoom;
-                    float base=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
-                    float left=(getWidth()-1600f*base)/2f;
-                    float top=(getHeight()-2200f*base)/2f;
-                    panX=detector.getFocusX()-left-(detector.getFocusX()-left-panX)*factor;
-                    panY=detector.getFocusY()-top-(detector.getFocusY()-top-panY)*factor;
+                    float vx=detector.getFocusX()-(getWidth()/2f+panX);
+                    float vy=detector.getFocusY()-(getHeight()/2f+panY);
+                    panX=detector.getFocusX()-getWidth()/2f-vx*factor;
+                    panY=detector.getFocusY()-getHeight()/2f-vy*factor;
                     invalidate();
                     return true;
                 }
@@ -254,7 +253,7 @@ public class MainActivity extends Activity {
         }
 
         void resetView() {
-            zoom=1f; panX=0f; panY=0f;
+            zoom=1f; panX=0f; panY=0f; rotation=0f;
             invalidate();
         }
 
@@ -356,11 +355,11 @@ public class MainActivity extends Activity {
             super.onDraw(canvas);
             canvas.drawColor(Color.rgb(65,65,70));
             float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
-            float left=(getWidth()-1600*scale)/2f;
-            float top=(getHeight()-2200*scale)/2f;
             canvas.save();
-            canvas.translate(left+panX,top+panY);
+            canvas.translate(getWidth()/2f+panX,getHeight()/2f+panY);
+            canvas.rotate(rotation);
             canvas.scale(scale*zoom,scale*zoom);
+            canvas.translate(-800f,-1100f);
             Paint background=new Paint();
             background.setColor(Color.WHITE);
             canvas.drawRect(0,0,1600,2200,background);
@@ -370,12 +369,15 @@ public class MainActivity extends Activity {
 
         @Override public boolean onTouchEvent(android.view.MotionEvent event) {
             scaleDetector.onTouchEvent(event);
-            float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f)*zoom;
-            float left=(getWidth()-1600f*Math.min((float)getWidth()/1600f,(float)getHeight()/2200f))/2f;
-            float top=(getHeight()-2200f*Math.min((float)getWidth()/1600f,(float)getHeight()/2200f))/2f;
-            float x=(event.getX()-left-panX)/scale;
-            float y=(event.getY()-top-panY)/scale;
-            switch(event.getAction()) {
+            float base=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
+            float scale=base*zoom;
+            float dx=event.getX()-getWidth()/2f-panX;
+            float dy=event.getY()-getHeight()/2f-panY;
+            double radians=Math.toRadians(-rotation);
+            float x=(float)(Math.cos(radians)*dx-Math.sin(radians)*dy)/scale+800f;
+            float y=(float)(Math.sin(radians)*dx+Math.cos(radians)*dy)/scale+1100f;
+
+            switch(event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     multiTouch=false;
                     if (x<0 || y<0 || x>1600 || y>2200) return false;
@@ -386,18 +388,41 @@ public class MainActivity extends Activity {
                     saveUndo();
                     lastX=x; lastY=y;
                     return true;
+
                 case MotionEvent.ACTION_POINTER_DOWN:
                     multiTouch=true;
-                    lastMidX=(event.getX(0)+event.getX(1))/2f;
-                    lastMidY=(event.getY(0)+event.getY(1))/2f;
+                    if (event.getPointerCount()>=2) {
+                        lastMidX=(event.getX(0)+event.getX(1))/2f;
+                        lastMidY=(event.getY(0)+event.getY(1))/2f;
+                        lastAngle=(float)Math.toDegrees(Math.atan2(
+                                event.getY(1)-event.getY(0),
+                                event.getX(1)-event.getX(0)));
+                    }
                     return true;
+
                 case MotionEvent.ACTION_MOVE:
                     if (event.getPointerCount()>=2) {
                         float midX=(event.getX(0)+event.getX(1))/2f;
                         float midY=(event.getY(0)+event.getY(1))/2f;
-                        panX+=midX-lastMidX;
-                        panY+=midY-lastMidY;
-                        lastMidX=midX; lastMidY=midY;
+                        float angle=(float)Math.toDegrees(Math.atan2(
+                                event.getY(1)-event.getY(0),
+                                event.getX(1)-event.getX(0)));
+                        float delta=angle-lastAngle;
+                        while (delta>180f) delta-=360f;
+                        while (delta<-180f) delta+=360f;
+
+                        float vx=lastMidX-(getWidth()/2f+panX);
+                        float vy=lastMidY-(getHeight()/2f+panY);
+                        double turn=Math.toRadians(delta);
+                        float rotatedX=(float)(Math.cos(turn)*vx-Math.sin(turn)*vy);
+                        float rotatedY=(float)(Math.sin(turn)*vx+Math.cos(turn)*vy);
+                        rotation+=delta;
+                        panX=midX-getWidth()/2f-rotatedX;
+                        panY=midY-getHeight()/2f-rotatedY;
+
+                        lastMidX=midX;
+                        lastMidY=midY;
+                        lastAngle=angle;
                         invalidate();
                         return true;
                     }
@@ -410,9 +435,11 @@ public class MainActivity extends Activity {
                     lastX=x; lastY=y;
                     invalidate();
                     return true;
+
                 case MotionEvent.ACTION_POINTER_UP:
                     multiTouch=true;
                     return true;
+
                 case MotionEvent.ACTION_UP:
                     if (multiTouch) { multiTouch=false; return true; }
                     paint.setColor(currentColor);
@@ -422,6 +449,7 @@ public class MainActivity extends Activity {
                     paint.setXfermode(null);
                     invalidate();
                     return true;
+
                 case MotionEvent.ACTION_CANCEL:
                     multiTouch=false;
                     paint.setXfermode(null);
