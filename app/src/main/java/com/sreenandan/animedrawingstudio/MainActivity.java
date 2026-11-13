@@ -61,6 +61,7 @@ public class MainActivity extends Activity {
         addButton(toolbar,"Flip H",() -> drawingView.flipSelection(true));
         addButton(toolbar,"Flip V",() -> drawingView.flipSelection(false));
         addButton(toolbar,"Del Sel",() -> drawingView.deleteSelection());
+        addButton(toolbar,"All",() -> drawingView.selectAll());
         Button gridButton = addButton(toolbar,"Grid OFF",() -> {
             boolean enabled = !drawingView.isGridEnabled();
             drawingView.setGridEnabled(enabled);
@@ -927,6 +928,18 @@ public class MainActivity extends Activity {
             strokeInProgress=false;
             if(!enabled) finishSelectionMove();
             invalidate();
+        }
+        void selectAll() {
+            if(movingSelection) finishSelectionMove();
+            selectionInProgress=false;
+            selectionStartX=0f;
+            selectionStartY=0f;
+            selectionEndX=1600f;
+            selectionEndY=2200f;
+            hasSelection=true;
+            selectionTool=true;
+            invalidate();
+            Toast.makeText(MainActivity.this,"Entire canvas selected",Toast.LENGTH_SHORT).show();
         }
         void clearSelection() {
             if(movingSelection) finishSelectionMove();
