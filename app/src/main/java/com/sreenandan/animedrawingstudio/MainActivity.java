@@ -1573,7 +1573,11 @@ public class MainActivity extends Activity {
                     float segmentStartX=lastX;
                     float segmentStartY=lastY;
                     if (activeStabilizer == 0) {
-                        currentPath.lineTo(x,y);
+                        // Keep zero-stabilisation responsive, but smooth the small
+                        // straight segments between finger samples into gentle curves.
+                        float midX=(lastX+x)*0.5f;
+                        float midY=(lastY+y)*0.5f;
+                        currentPath.quadTo(lastX,lastY,midX,midY);
                         lastX=x;
                         lastY=y;
                     } else {
