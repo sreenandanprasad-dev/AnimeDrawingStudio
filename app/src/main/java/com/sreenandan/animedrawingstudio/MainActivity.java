@@ -969,25 +969,33 @@ public class MainActivity extends Activity {
             int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
             int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
             if(right<=left || bottom<=top) return;
+
+            Bitmap copy=null;
             try {
-                saveUndo();
-                movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,
+                copy=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,
                         right-left,bottom-top);
+                saveUndo();
+                int offsetX=(right+24<=1600) ? 24 : (left>=24 ? -24 : 0);
+                int offsetY=(bottom+24<=2200) ? 24 : (top>=24 ? -24 : 0);
+                Canvas target=new Canvas(layers.get(activeLayer).bitmap);
+                target.drawBitmap(copy,left+offsetX,top+offsetY,null);
+                selectionStartX=left+offsetX;
+                selectionEndX=right+offsetX;
+                selectionStartY=top+offsetY;
+                selectionEndY=bottom+offsetY;
+                selectionTool=true;
+                hasSelection=true;
+                invalidate();
+                Toast.makeText(MainActivity.this,"Selection duplicated. Drag the copy to move it.",
+                        Toast.LENGTH_SHORT).show();
             } catch (OutOfMemoryError memoryError) {
-                if(movingSelectionBitmap!=null && !movingSelectionBitmap.isRecycled()) movingSelectionBitmap.recycle();
-                movingSelectionBitmap=null;
                 System.gc();
-                Toast.makeText(MainActivity.this,"Not enough memory to duplicate this selection. Try a smaller area.",Toast.LENGTH_LONG).show();
-                return;
+                Toast.makeText(MainActivity.this,
+                        "Not enough memory to duplicate this selection. Try a smaller area.",
+                        Toast.LENGTH_LONG).show();
+            } finally {
+                if(copy!=null && !copy.isRecycled()) copy.recycle();
             }
-            selectionBitmapLeft=left;
-            selectionBitmapTop=top;
-            movingSelection=true;
-            selectionMoveDX=24f;
-            selectionMoveDY=24f;
-            selectionMoveBaseDX=selectionMoveBaseDY=0f;
-            invalidate();
-            Toast.makeText(MainActivity.this,"Duplicate created — drag it to position",Toast.LENGTH_SHORT).show();
         }
         void deleteSelection() {
             if(movingSelection) {
