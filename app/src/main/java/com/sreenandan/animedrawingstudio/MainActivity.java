@@ -698,6 +698,7 @@ public class MainActivity extends Activity {
         private Bitmap movingSelectionBitmap=null;
         private float selectionStartX,selectionStartY,selectionEndX,selectionEndY;
         private float selectionMoveStartX,selectionMoveStartY,selectionMoveDX,selectionMoveDY;
+        private float selectionMoveBaseDX,selectionMoveBaseDY;
         private int selectionBitmapLeft,selectionBitmapTop;
         private boolean symmetryEnabled=false;
         private int shapeTool=0;
@@ -787,10 +788,12 @@ public class MainActivity extends Activity {
             invalidate();
         }
         private boolean pointInsideSelection(float px,float py) {
-            return hasSelection && px>=Math.min(selectionStartX,selectionEndX)
-                    && px<=Math.max(selectionStartX,selectionEndX)
-                    && py>=Math.min(selectionStartY,selectionEndY)
-                    && py<=Math.max(selectionStartY,selectionEndY);
+            float offsetX=movingSelection ? selectionMoveDX : 0f;
+            float offsetY=movingSelection ? selectionMoveDY : 0f;
+            return hasSelection && px>=Math.min(selectionStartX,selectionEndX)+offsetX
+                    && px<=Math.max(selectionStartX,selectionEndX)+offsetX
+                    && py>=Math.min(selectionStartY,selectionEndY)+offsetY
+                    && py<=Math.max(selectionStartY,selectionEndY)+offsetY;
         }
         private void finishSelectionMove() {
             if(!movingSelection || movingSelectionBitmap==null) return;
@@ -804,6 +807,7 @@ public class MainActivity extends Activity {
             selectionStartY+=selectionMoveDY;
             selectionEndY+=selectionMoveDY;
             selectionMoveDX=selectionMoveDY=0f;
+            selectionMoveBaseDX=selectionMoveBaseDY=0f;
             movingSelection=false;
             invalidate();
         }
@@ -1235,6 +1239,14 @@ public class MainActivity extends Activity {
                     multiTouch=false;
                     if (selectionTool) {
                         if(pointInsideSelection(x,y)) {
+                            if(movingSelection && movingSelectionBitmap!=null) {
+                                selectionMoveStartX=x;
+                                selectionMoveStartY=y;
+                                selectionMoveBaseDX=selectionMoveDX;
+                                selectionMoveBaseDY=selectionMoveDY;
+                                drawingGesture=true;
+                                return true;
+                            }
                             if(layers.get(activeLayer).alphaLocked) {
                                 Toast.makeText(MainActivity.this,"Turn off Alpha Lock to move this selection",Toast.LENGTH_SHORT).show();
                                 return true;
@@ -1257,6 +1269,7 @@ public class MainActivity extends Activity {
                                 selectionMoveStartX=x;
                                 selectionMoveStartY=y;
                                 selectionMoveDX=selectionMoveDY=0f;
+                                selectionMoveBaseDX=selectionMoveBaseDY=0f;
                                 drawingGesture=true;
                                 invalidate();
                                 return true;
@@ -1379,8 +1392,8 @@ public class MainActivity extends Activity {
                     }
                     if (multiTouch || !drawingGesture) return true;
                     if(movingSelection) {
-                        selectionMoveDX=x-selectionMoveStartX;
-                        selectionMoveDY=y-selectionMoveStartY;
+                        selectionMoveDX=selectionMoveBaseDX+x-selectionMoveStartX;
+                        selectionMoveDY=selectionMoveBaseDY+y-selectionMoveStartY;
                         invalidate();
                         return true;
                     }
@@ -1473,10 +1486,10 @@ public class MainActivity extends Activity {
 
                 case MotionEvent.ACTION_UP:
                     if(movingSelection) {
-                        selectionMoveDX=x-selectionMoveStartX;
-                        selectionMoveDY=y-selectionMoveStartY;
-                        finishSelectionMove();
+                        selectionMoveDX=selectionMoveBaseDX+x-selectionMoveStartX;
+                        selectionMoveDY=selectionMoveBaseDY+y-selectionMoveStartY;
                         drawingGesture=false;
+                        invalidate();
                         return true;
                     }
                     if (selectionInProgress) {
