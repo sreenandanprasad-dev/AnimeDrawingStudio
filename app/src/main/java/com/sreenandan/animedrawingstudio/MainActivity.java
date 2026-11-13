@@ -580,6 +580,29 @@ public class MainActivity extends Activity {
                 default: return null;
             }
         }
+
+        private void configureLayerPaint(Layer layer) {
+            layerPaint.setAlpha(layer.opacity * 255 / 100);
+            if (Build.VERSION.SDK_INT >= 29) {
+                layerPaint.setXfermode(null);
+                switch (layer.blendMode) {
+                    case 1: layerPaint.setBlendMode(BlendMode.MULTIPLY); break;
+                    case 2: layerPaint.setBlendMode(BlendMode.SCREEN); break;
+                    case 3: layerPaint.setBlendMode(BlendMode.PLUS); break;
+                    case 4: layerPaint.setBlendMode(BlendMode.DARKEN); break;
+                    case 5: layerPaint.setBlendMode(BlendMode.LIGHTEN); break;
+                    default: layerPaint.setBlendMode(null); break;
+                }
+            } else {
+                layerPaint.setXfermode(createLayerXfermode(layer.blendMode));
+            }
+        }
+
+        private void resetLayerPaint() {
+            layerPaint.setAlpha(255);
+            layerPaint.setXfermode(null);
+            if (Build.VERSION.SDK_INT >= 29) layerPaint.setBlendMode(null);
+        }
         void setLayerOpacity(int index,int opacity) {
             layers.get(index).opacity=Math.max(0,Math.min(100,opacity));
             invalidate();
@@ -766,12 +789,10 @@ public class MainActivity extends Activity {
             Canvas c=new Canvas(merged);
             c.drawColor(Color.WHITE);
             for (Layer layer:layers) if (layer.visible && layer.opacity>0) {
-                layerPaint.setAlpha(layer.opacity*255/100);
-                layerPaint.setXfermode(createLayerXfermode(layer.blendMode));
+                configureLayerPaint(layer);
                 c.drawBitmap(layer.bitmap,0,0,layerPaint);
             }
-            layerPaint.setAlpha(255);
-            layerPaint.setXfermode(null);
+            resetLayerPaint();
             return merged;
         }
 
@@ -788,12 +809,10 @@ public class MainActivity extends Activity {
             background.setColor(Color.WHITE);
             canvas.drawRect(0,0,1600,2200,background);
             for (Layer layer:layers) if (layer.visible && layer.opacity>0) {
-                layerPaint.setAlpha(layer.opacity*255/100);
-                layerPaint.setXfermode(createLayerXfermode(layer.blendMode));
+                configureLayerPaint(layer);
                 canvas.drawBitmap(layer.bitmap,0,0,layerPaint);
             }
-            layerPaint.setAlpha(255);
-            layerPaint.setXfermode(null);
+            resetLayerPaint();
             if (strokeInProgress && !strokeEraser) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                 drawSymmetricPath(canvas,currentPath,previewPaint);
