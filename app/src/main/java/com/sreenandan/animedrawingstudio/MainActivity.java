@@ -82,8 +82,8 @@ public class MainActivity extends Activity {
             p.setMargins(2,1,2,1);
             colors.addView(swatch,p);
             swatch.setOnClickListener(v -> {
+                // Changing colour must never change the active drawing tool.
                 currentColor = color;
-                drawingView.setEraser(false);
             });
         }
         Button wheelButton = new Button(this);
@@ -479,8 +479,8 @@ public class MainActivity extends Activity {
                 .setView(panel)
                 .setNegativeButton("Cancel",null)
                 .setPositiveButton("Use colour",(dialog,which) -> {
+                    // Keep the currently selected tool (especially Bucket Fill) active.
                     currentColor = selected[0];
-                    drawingView.setEraser(false);
                 })
                 .show();
     }
