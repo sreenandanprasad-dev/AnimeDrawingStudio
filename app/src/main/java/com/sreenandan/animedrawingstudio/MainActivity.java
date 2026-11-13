@@ -57,6 +57,7 @@ public class MainActivity extends Activity {
         addButton(toolbar,"Save",() -> saveImage());
         addButton(toolbar,"⌕",() -> drawingView.resetView());
         addButton(toolbar,"Sel X",() -> drawingView.clearSelection());
+        addButton(toolbar,"Dup",() -> drawingView.duplicateSelection());
         symmetryButton = addButton(toolbar,"Sym OFF",() -> {
             boolean enabled = !drawingView.isSymmetryEnabled();
             drawingView.setSymmetryEnabled(enabled);
@@ -913,6 +914,32 @@ public class MainActivity extends Activity {
             selectionInProgress=false;
             hasSelection=false;
             invalidate();
+        }
+        void duplicateSelection() {
+            if(movingSelection) {
+                Toast.makeText(MainActivity.this,"Finish the current move before duplicating",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if(!hasSelection) {
+                Toast.makeText(MainActivity.this,"Make a selection first",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            int left=Math.max(0,(int)Math.floor(Math.min(selectionStartX,selectionEndX)));
+            int top=Math.max(0,(int)Math.floor(Math.min(selectionStartY,selectionEndY)));
+            int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
+            int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
+            if(right<=left || bottom<=top) return;
+            saveUndo();
+            movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,
+                    right-left,bottom-top);
+            selectionBitmapLeft=left;
+            selectionBitmapTop=top;
+            movingSelection=true;
+            selectionMoveDX=24f;
+            selectionMoveDY=24f;
+            selectionMoveBaseDX=selectionMoveBaseDY=0f;
+            invalidate();
+            Toast.makeText(MainActivity.this,"Duplicate created — drag it to position",Toast.LENGTH_SHORT).show();
         }
         private boolean pointInsideSelection(float px,float py) {
             float offsetX=movingSelection ? selectionMoveDX : 0f;
