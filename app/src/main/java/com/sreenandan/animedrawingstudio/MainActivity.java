@@ -662,6 +662,7 @@ public class MainActivity extends Activity {
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint previewPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint liveEraserPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint layerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Bitmap pencilTexture;
         private final Path currentPath = new Path();
@@ -999,6 +1000,8 @@ public class MainActivity extends Activity {
                 return;
             }
             final int width=1600, height=2200, total=width*height;
+            startX=Math.max(0,Math.min(width-1,startX));
+            startY=Math.max(0,Math.min(height-1,startY));
             Bitmap composite=exportBitmap();
             int[] source=new int[total];
             int[] target=new int[total];
@@ -1006,31 +1009,40 @@ public class MainActivity extends Activity {
             composite.recycle();
             Layer destination=layers.get(activeLayer);
             destination.bitmap.getPixels(target,0,width,0,0,width,height);
-            int start=startY*width+startX;
-            int sampled=source[start];
-            int replacement=currentColor;
-            if (sampled==replacement || colorDistance(sampled,replacement)<8) return;
-            saveUndo();
-            // Mark visited source pixels with a sentinel while using a scanline queue.
-            int capacity=4096, head=0, tail=0;
-            int[] queue=new int[capacity];
+            final int start=startY*width+startX;
+            final int sampled=source[start];
+            final int replacement=currentColor;
+            if (colorDistance(sampled,replacement)<8) return;
+
+            // Visited is separate from the pixel data so no colour can be mistaken
+            // for a marker. Enqueue one seed per contiguous run to avoid queue blow-up.
+            final boolean[] visited=new boolean[total];
+            int[] queue=new int[4096];
+            int head=0,tail=0,capacity=queue.length;
             queue[tail++]=start;
-            final int tolerance=42;
+            final int tolerance=55;
+            boolean changed=false;
             while(head<tail) {
                 int seed=queue[head++];
+                if(visited[seed] || colorDistance(source[seed],sampled)>tolerance) continue;
                 int sy=seed/width, sx=seed%width;
-                if (source[seed]==Integer.MIN_VALUE || colorDistance(source[seed],sampled)>tolerance) continue;
                 int left=sx, right=sx;
-                while(left>0 && source[sy*width+left-1]!=Integer.MIN_VALUE
-                        && colorDistance(source[sy*width+left-1],sampled)<=tolerance) left--;
-                while(right<width-1 && source[sy*width+right+1]!=Integer.MIN_VALUE
-                        && colorDistance(source[sy*width+right+1],sampled)<=tolerance) right++;
+                while(left>0) {
+                    int index=sy*width+left-1;
+                    if(visited[index] || colorDistance(source[index],sampled)>tolerance) break;
+                    left--;
+                }
+                while(right<width-1) {
+                    int index=sy*width+right+1;
+                    if(visited[index] || colorDistance(source[index],sampled)>tolerance) break;
+                    right++;
+                }
                 for(int px=left;px<=right;px++) {
                     int index=sy*width+px;
-                    source[index]=Integer.MIN_VALUE;
-                    // Alpha Lock changes colour only where this layer already has pixels.
-                    if (!destination.alphaLocked || Color.alpha(target[index])>0) {
+                    visited[index]=true;
+                    if(!destination.alphaLocked || Color.alpha(target[index])>0) {
                         target[index]=replacement;
+                        changed=true;
                     }
                 }
                 for(int ny : new int[]{sy-1,sy+1}) {
@@ -1038,23 +1050,31 @@ public class MainActivity extends Activity {
                     int px=left;
                     while(px<=right) {
                         int index=ny*width+px;
-                        if(source[index]!=Integer.MIN_VALUE && colorDistance(source[index],sampled)<=tolerance) {
+                        if(!visited[index] && colorDistance(source[index],sampled)<=tolerance) {
                             if(tail==capacity) {
-                                capacity*=2;
+                                capacity=Math.min(total,capacity*2);
                                 int[] grown=new int[capacity];
                                 System.arraycopy(queue,0,grown,0,tail);
                                 queue=grown;
                             }
                             queue[tail++]=index;
                             px++;
-                            while(px<=right && source[ny*width+px]!=Integer.MIN_VALUE
-                                    && colorDistance(source[ny*width+px],sampled)<=tolerance) px++;
+                            while(px<=right) {
+                                int next=ny*width+px;
+                                if(visited[next] || colorDistance(source[next],sampled)>tolerance) break;
+                                px++;
+                            }
                         } else px++;
                     }
                 }
             }
-            destination.bitmap.setPixels(target,0,width,0,0,width,height);
-            invalidate();
+            if(changed) {
+                saveUndo();
+                destination.bitmap.setPixels(target,0,width,0,0,width,height);
+                invalidate();
+            } else {
+                Toast.makeText(MainActivity.this,"Nothing to fill on this layer",Toast.LENGTH_SHORT).show();
+            }
         }
         private int colorDistance(int a,int b) {
             int dr=Math.abs(Color.red(a)-Color.red(b));
@@ -1176,6 +1196,18 @@ public class MainActivity extends Activity {
                     if (strokePreset==3) strokeWidth*=2.2f;
                     if (strokePreset==4) strokeWidth*=2.8f;
                     strokeEraser=eraser;
+                    if(strokeEraser && !layers.get(activeLayer).alphaLocked) {
+                        liveEraserPaint.setStyle(Paint.Style.STROKE);
+                        liveEraserPaint.setStrokeCap(Paint.Cap.ROUND);
+                        liveEraserPaint.setStrokeJoin(Paint.Join.ROUND);
+                        liveEraserPaint.setStrokeWidth(strokeWidth);
+                        liveEraserPaint.setColor(Color.TRANSPARENT);
+                        liveEraserPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+                        Canvas layerCanvas=new Canvas(layers.get(activeLayer).bitmap);
+                        layerCanvas.drawCircle(x,y,strokeWidth/2f,liveEraserPaint);
+                        if(symmetryEnabled) layerCanvas.drawCircle(1600f-x,y,strokeWidth/2f,liveEraserPaint);
+                        liveEraserPaint.setXfermode(null);
+                    }
                     if (shapeTool>0) {
                         shapeStartX=shapeEndX=x;
                         shapeStartY=shapeEndY=y;
@@ -1259,6 +1291,8 @@ public class MainActivity extends Activity {
                     lastTouchY=event.getY();
                     lastTouchTime=eventTime;
 
+                    float segmentStartX=lastX;
+                    float segmentStartY=lastY;
                     if (activeStabilizer == 0) {
                         currentPath.lineTo(x,y);
                         lastX=x;
@@ -1282,6 +1316,20 @@ public class MainActivity extends Activity {
                         currentPath.quadTo(lastX,lastY,midX,midY);
                         lastX=filteredX;
                         lastY=filteredY;
+                    }
+                    if(strokeEraser && !layers.get(activeLayer).alphaLocked) {
+                        liveEraserPaint.setStyle(Paint.Style.STROKE);
+                        liveEraserPaint.setStrokeCap(Paint.Cap.ROUND);
+                        liveEraserPaint.setStrokeJoin(Paint.Join.ROUND);
+                        liveEraserPaint.setStrokeWidth(strokeWidth);
+                        liveEraserPaint.setColor(Color.TRANSPARENT);
+                        liveEraserPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+                        Path eraseSegment=new Path();
+                        eraseSegment.moveTo(segmentStartX,segmentStartY);
+                        eraseSegment.lineTo(lastX,lastY);
+                        Canvas layerCanvas=new Canvas(layers.get(activeLayer).bitmap);
+                        drawSymmetricPath(layerCanvas,eraseSegment,liveEraserPaint);
+                        liveEraserPaint.setXfermode(null);
                     }
                     invalidate();
                     return true;
@@ -1331,7 +1379,7 @@ public class MainActivity extends Activity {
                         } else {
                             paint.setXfermode(strokeEraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
                         }
-                        if (!(strokeEraser && layers.get(activeLayer).alphaLocked)) {
+                        if (!(strokeEraser && layers.get(activeLayer).alphaLocked) && !strokeEraser) {
                             drawSymmetricPath(new Canvas(layers.get(activeLayer).bitmap),currentPath,paint);
                         }
                         paint.setXfermode(null);
