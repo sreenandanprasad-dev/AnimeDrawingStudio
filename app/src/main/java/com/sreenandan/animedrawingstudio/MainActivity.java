@@ -1073,7 +1073,20 @@ public class MainActivity extends Activity {
             layers.get(activeLayer).name=name;
         }
         void setEraser(boolean value) { eraser=value; bucketTool=false; shapeTool=0; selectionTool=false; }
-        void setBucketTool(boolean value) { bucketTool=value; eraser=false; shapeTool=0; selectionTool=false; invalidate(); }
+        void setBucketTool(boolean value) {
+            bucketTool=value;
+            eraser=false;
+            shapeTool=0;
+            selectionTool=false;
+            if(value) {
+                if(movingSelection) finishSelectionMove();
+                selectionInProgress=false;
+                strokeInProgress=false;
+                shapeInProgress=false;
+                pendingBucketFill=false;
+            }
+            invalidate();
+        }
         void setShapeTool(int value) { shapeTool=Math.max(0,Math.min(3,value)); eraser=false; bucketTool=false; selectionTool=false; invalidate(); }
         void setBrushSize(float value) { brushSize=value; paint.setStrokeWidth(value); }
         void setBrushPreset(int value) { brushPreset=Math.max(0,Math.min(4,value)); }
@@ -1605,6 +1618,18 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_UP:
+                    // A pending bucket tap must be handled before floating-selection
+                    // completion; otherwise stale selection state can swallow the tap.
+                    if (pendingBucketFill) {
+                        if (!multiTouch && x>=0 && y>=0 && x<1600 && y<2200) {
+                            fillAt(Math.max(0,Math.min(1599,Math.round(x))),
+                                    Math.max(0,Math.min(2199,Math.round(y))));
+                        }
+                        pendingBucketFill=false;
+                        multiTouch=false;
+                        drawingGesture=false;
+                        return true;
+                    }
                     if(movingSelection) {
                         selectionMoveDX=selectionMoveBaseDX+x-selectionMoveStartX;
                         selectionMoveDY=selectionMoveBaseDY+y-selectionMoveStartY;
@@ -1620,12 +1645,6 @@ public class MainActivity extends Activity {
                         hasSelection=Math.abs(selectionEndX-selectionStartX)>=2f
                                 && Math.abs(selectionEndY-selectionStartY)>=2f;
                         invalidate();
-                        return true;
-                    }
-                    if (pendingBucketFill) {
-                        if (!multiTouch) fillAt(pendingFillX,pendingFillY);
-                        pendingBucketFill=false;
-                        multiTouch=false;
                         return true;
                     }
                     if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; strokeInProgress=false; shapeInProgress=false; currentPath.reset(); invalidate(); return true; }
