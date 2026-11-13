@@ -1276,6 +1276,9 @@ public class MainActivity extends Activity {
 
                 case MotionEvent.ACTION_POINTER_DOWN:
                     multiTouch=true;
+                    // Multi-touch is reserved for canvas navigation, not selection.
+                    selectionInProgress=false;
+                    drawingGesture=false;
                     // A second finger means this is a zoom/rotate gesture, not a fill tap.
                     pendingBucketFill=false;
                     if (event.getPointerCount()>=2) {
