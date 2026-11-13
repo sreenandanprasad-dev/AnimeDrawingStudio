@@ -698,6 +698,7 @@ public class MainActivity extends Activity {
         private Bitmap movingSelectionBitmap=null;
         private float selectionStartX,selectionStartY,selectionEndX,selectionEndY;
         private float selectionMoveStartX,selectionMoveStartY,selectionMoveDX,selectionMoveDY;
+        private int selectionBitmapLeft,selectionBitmapTop;
         private boolean symmetryEnabled=false;
         private int shapeTool=0;
         private boolean shapeInProgress=false;
@@ -794,7 +795,8 @@ public class MainActivity extends Activity {
         private void finishSelectionMove() {
             if(!movingSelection || movingSelectionBitmap==null) return;
             Canvas layerCanvas=new Canvas(layers.get(activeLayer).bitmap);
-            layerCanvas.drawBitmap(movingSelectionBitmap,selectionMoveDX,selectionMoveDY,null);
+            layerCanvas.drawBitmap(movingSelectionBitmap,selectionBitmapLeft+selectionMoveDX,
+                    selectionBitmapTop+selectionMoveDY,null);
             movingSelectionBitmap.recycle();
             movingSelectionBitmap=null;
             selectionStartX+=selectionMoveDX;
@@ -1163,7 +1165,7 @@ public class MainActivity extends Activity {
             drawLayerStack(canvas);
             if(movingSelection && movingSelectionBitmap!=null) {
                 canvas.drawBitmap(movingSelectionBitmap,
-                        selectionMoveDX,selectionMoveDY,null);
+                        selectionBitmapLeft+selectionMoveDX,selectionBitmapTop+selectionMoveDY,null);
             }
             if (strokeInProgress && !strokeEraser) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
@@ -1242,6 +1244,8 @@ public class MainActivity extends Activity {
                             if(right>left && bottom>top) {
                                 saveUndo();
                                 movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,right-left,bottom-top);
+                                selectionBitmapLeft=left;
+                                selectionBitmapTop=top;
                                 Canvas clearCanvas=new Canvas(layers.get(activeLayer).bitmap);
                                 Paint clearPaint=new Paint();
                                 clearPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
