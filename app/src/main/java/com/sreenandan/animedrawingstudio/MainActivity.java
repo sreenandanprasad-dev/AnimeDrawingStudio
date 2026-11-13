@@ -735,6 +735,10 @@ public class MainActivity extends Activity {
             if (drawingView.addLayer()) refresh[0].run();
             else Toast.makeText(this,"Layer limit reached (6)",Toast.LENGTH_SHORT).show();
         });
+        addButton(actions,"Duplicate",() -> {
+            if (drawingView.duplicateActiveLayer()) refresh[0].run();
+            else Toast.makeText(this,"Layer limit reached (6)",Toast.LENGTH_SHORT).show();
+        });
         addButton(actions,"Rename",() -> renameLayer(refresh[0]));
         addButton(actions,"Delete",() -> {
             if (!drawingView.deleteActiveLayer())
@@ -1195,6 +1199,23 @@ public class MainActivity extends Activity {
             if (layers.size()>=6) return false;
             layers.add(new Layer("Layer "+(layers.size()+1)));
             activeLayer=layers.size()-1;
+            invalidate();
+            return true;
+        }
+        boolean duplicateActiveLayer() {
+            if (layers.size()>=6) return false;
+            Layer source=layers.get(activeLayer);
+            Layer copy=new Layer(source.name + " copy");
+            copy.bitmap.recycle();
+            copy.bitmap=source.bitmap.copy(Bitmap.Config.ARGB_8888,false);
+            copy.visible=source.visible;
+            copy.opacity=source.opacity;
+            copy.blendMode=source.blendMode;
+            copy.alphaLocked=source.alphaLocked;
+            copy.clipToBelow=source.clipToBelow;
+            layers.add(activeLayer+1,copy);
+            activeLayer=activeLayer+1;
+            clearHistory();
             invalidate();
             return true;
         }
