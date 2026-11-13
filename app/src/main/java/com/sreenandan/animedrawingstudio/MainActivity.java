@@ -521,6 +521,17 @@ public class MainActivity extends Activity {
                     visible.setChecked(drawingView.isLayerVisible(index));
                     visible.setOnCheckedChangeListener((button,checked) -> drawingView.setLayerVisible(index,checked));
                     row.addView(visible);
+                    TextView alphaLabel = new TextView(MainActivity.this);
+                    alphaLabel.setText("Lock α");
+                    alphaLabel.setTextSize(10);
+                    alphaLabel.setTextColor(Color.BLACK);
+                    row.addView(alphaLabel);
+                    CheckBox alphaLock = new CheckBox(MainActivity.this);
+                    alphaLock.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.BLACK));
+                    alphaLock.setChecked(drawingView.isLayerAlphaLocked(index));
+                    alphaLock.setOnCheckedChangeListener((button,checked) ->
+                            drawingView.setLayerAlphaLocked(index,checked));
+                    row.addView(alphaLock);
                     rows.addView(row);
                     LinearLayout opacityRow = new LinearLayout(MainActivity.this);
                     opacityRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -635,6 +646,7 @@ public class MainActivity extends Activity {
             boolean visible=true;
             int opacity=100;
             int blendMode=0;
+            boolean alphaLocked=false;
             Layer(String label) {
                 name=label;
                 bitmap=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
@@ -776,6 +788,11 @@ public class MainActivity extends Activity {
         boolean isLayerVisible(int index) { return layers.get(index).visible; }
         int getLayerOpacity(int index) { return layers.get(index).opacity; }
         int getLayerBlendMode(int index) { return layers.get(index).blendMode; }
+        boolean isLayerAlphaLocked(int index) { return layers.get(index).alphaLocked; }
+        void setLayerAlphaLocked(int index,boolean locked) {
+            layers.get(index).alphaLocked=locked;
+            invalidate();
+        }
         void setLayerBlendMode(int index,int mode) {
             layers.get(index).blendMode=Math.max(0,Math.min(5,mode));
             invalidate();
@@ -956,7 +973,10 @@ public class MainActivity extends Activity {
                 for(int px=left;px<=right;px++) {
                     int index=sy*width+px;
                     source[index]=Integer.MIN_VALUE;
-                    target[index]=replacement;
+                    // Alpha Lock changes colour only where this layer already has pixels.
+                    if (!destination.alphaLocked || Color.alpha(target[index])>0) {
+                        target[index]=replacement;
+                    }
                 }
                 for(int ny : new int[]{sy-1,sy+1}) {
                     if(ny<0 || ny>=height) continue;
@@ -1228,8 +1248,12 @@ public class MainActivity extends Activity {
                         shapeEndX=x;
                         shapeEndY=y;
                         configureStrokePaint(paint,strokePreset,strokeColor,brushOpacity,strokeWidth);
+                        if (layers.get(activeLayer).alphaLocked) {
+                            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP));
+                        }
                         drawSymmetricShape(new Canvas(layers.get(activeLayer).bitmap),paint,shapeTool,
                                 shapeStartX,shapeStartY,shapeEndX,shapeEndY);
+                        paint.setXfermode(null);
                         paint.setShader(null);
                         paint.setColorFilter(null);
                         paint.setMaskFilter(null);
@@ -1240,7 +1264,10 @@ public class MainActivity extends Activity {
                         // Connecting to the raw finger point here can create a sudden final sweep.
                         if (activeStabilizer == 0) currentPath.lineTo(x,y);
                         else currentPath.lineTo(lastX,lastY);
-                        if(strokeEraser) {
+                        if(strokeEraser && layers.get(activeLayer).alphaLocked) {
+                            Toast.makeText(MainActivity.this,"Turn off Alpha Lock before erasing",Toast.LENGTH_SHORT).show();
+                            paint.setXfermode(null);
+                        } else if(strokeEraser) {
                             paint.setColor(Color.TRANSPARENT);
                             paint.setAlpha(255);
                             paint.setShader(null);
@@ -1250,8 +1277,14 @@ public class MainActivity extends Activity {
                         } else {
                             configureStrokePaint(paint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                         }
-                        paint.setXfermode(strokeEraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
-                        drawSymmetricPath(new Canvas(layers.get(activeLayer).bitmap),currentPath,paint);
+                        if (layers.get(activeLayer).alphaLocked && !strokeEraser) {
+                            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP));
+                        } else {
+                            paint.setXfermode(strokeEraser ? new PorterDuffXfermode(PorterDuff.Mode.CLEAR) : null);
+                        }
+                        if (!(strokeEraser && layers.get(activeLayer).alphaLocked)) {
+                            drawSymmetricPath(new Canvas(layers.get(activeLayer).bitmap),currentPath,paint);
+                        }
                         paint.setXfermode(null);
                         paint.setShader(null);
                         paint.setColorFilter(null);
