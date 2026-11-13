@@ -58,6 +58,8 @@ public class MainActivity extends Activity {
         addButton(toolbar,"⌕",() -> drawingView.resetView());
         addButton(toolbar,"Sel X",() -> drawingView.clearSelection());
         addButton(toolbar,"Dup",() -> drawingView.duplicateSelection());
+        addButton(toolbar,"Flip H",() -> drawingView.flipSelection(true));
+        addButton(toolbar,"Flip V",() -> drawingView.flipSelection(false));
         symmetryButton = addButton(toolbar,"Sym OFF",() -> {
             boolean enabled = !drawingView.isSymmetryEnabled();
             drawingView.setSymmetryEnabled(enabled);
@@ -940,6 +942,48 @@ public class MainActivity extends Activity {
             selectionMoveBaseDX=selectionMoveBaseDY=0f;
             invalidate();
             Toast.makeText(MainActivity.this,"Duplicate created — drag it to position",Toast.LENGTH_SHORT).show();
+        }
+        void flipSelection(boolean horizontal) {
+            if(movingSelection) {
+                Toast.makeText(MainActivity.this,"Finish the current move before flipping",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if(!hasSelection) {
+                Toast.makeText(MainActivity.this,"Make a selection first",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if(layers.get(activeLayer).alphaLocked) {
+                Toast.makeText(MainActivity.this,"Turn off Alpha Lock before flipping",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            int left=Math.max(0,(int)Math.floor(Math.min(selectionStartX,selectionEndX)));
+            int top=Math.max(0,(int)Math.floor(Math.min(selectionStartY,selectionEndY)));
+            int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
+            int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
+            int width=right-left, height=bottom-top;
+            if(width<=0 || height<=0) return;
+            saveUndo();
+            Bitmap source=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,width,height);
+            Matrix transform=new Matrix();
+            if(horizontal) {
+                transform.setScale(-1f,1f);
+                transform.postTranslate(width,0f);
+            } else {
+                transform.setScale(1f,-1f);
+                transform.postTranslate(0f,height);
+            }
+            Bitmap flipped=Bitmap.createBitmap(source,0,0,width,height,transform,false);
+            Canvas target=new Canvas(layers.get(activeLayer).bitmap);
+            Paint clear=new Paint();
+            clear.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+            target.drawRect(left,top,right,bottom,clear);
+            clear.setXfermode(null);
+            target.drawBitmap(flipped,left,top,null);
+            source.recycle();
+            flipped.recycle();
+            invalidate();
+            Toast.makeText(MainActivity.this,horizontal ? "Flipped horizontally" : "Flipped vertically",
+                    Toast.LENGTH_SHORT).show();
         }
         private boolean pointInsideSelection(float px,float py) {
             float offsetX=movingSelection ? selectionMoveDX : 0f;
