@@ -60,6 +60,7 @@ public class MainActivity extends Activity {
         addButton(toolbar,"Dup",() -> drawingView.duplicateSelection());
         addButton(toolbar,"Flip H",() -> drawingView.flipSelection(true));
         addButton(toolbar,"Flip V",() -> drawingView.flipSelection(false));
+        addButton(toolbar,"Del Sel",() -> drawingView.deleteSelection());
         Button gridButton = addButton(toolbar,"Grid OFF",() -> {
             boolean enabled = !drawingView.isGridEnabled();
             drawingView.setGridEnabled(enabled);
@@ -959,6 +960,33 @@ public class MainActivity extends Activity {
             invalidate();
             Toast.makeText(MainActivity.this,"Duplicate created — drag it to position",Toast.LENGTH_SHORT).show();
         }
+        void deleteSelection() {
+            if(movingSelection) {
+                Toast.makeText(MainActivity.this,"Finish the current move before deleting",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if(!hasSelection) {
+                Toast.makeText(MainActivity.this,"Make a selection first",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            if(layers.get(activeLayer).alphaLocked) {
+                Toast.makeText(MainActivity.this,"Turn off Alpha Lock before deleting",Toast.LENGTH_SHORT).show();
+                return;
+            }
+            int left=Math.max(0,(int)Math.floor(Math.min(selectionStartX,selectionEndX)));
+            int top=Math.max(0,(int)Math.floor(Math.min(selectionStartY,selectionEndY)));
+            int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
+            int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
+            if(right<=left || bottom<=top) return;
+            saveUndo();
+            Paint clearPaint=new Paint();
+            clearPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+            new Canvas(layers.get(activeLayer).bitmap).drawRect(left,top,right,bottom,clearPaint);
+            clearPaint.setXfermode(null);
+            invalidate();
+            Toast.makeText(MainActivity.this,"Selected area cleared — Undo to restore",Toast.LENGTH_SHORT).show();
+        }
+
         void flipSelection(boolean horizontal) {
             if(movingSelection) {
                 Toast.makeText(MainActivity.this,"Finish the current move before flipping",Toast.LENGTH_SHORT).show();
