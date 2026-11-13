@@ -1320,11 +1320,14 @@ public class MainActivity extends Activity {
             undo.clear(); redo.clear();
         }
         void saveUndo() {
-            if (undo.size()>=8) {
+            // Full-canvas ARGB snapshots are expensive on phones with limited heap.
+            // Keep only the two most recent undo states and release old bitmaps promptly.
+            while (undo.size()>=2) {
                 Snapshot old=undo.remove(0);
                 if (!old.bitmap.isRecycled()) old.bitmap.recycle();
             }
-            undo.add(new Snapshot(activeLayer,layers.get(activeLayer).bitmap.copy(Bitmap.Config.ARGB_8888,false)));
+            Bitmap snapshot=layers.get(activeLayer).bitmap.copy(Bitmap.Config.ARGB_8888,false);
+            undo.add(new Snapshot(activeLayer,snapshot));
             for (Snapshot s:redo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
             redo.clear();
         }
@@ -1348,9 +1351,9 @@ public class MainActivity extends Activity {
         void redo() {
             if (redo.isEmpty()) return;
             Snapshot next=redo.remove(redo.size()-1);
-            if (undo.size()>=8) {
+            while (undo.size()>=2) {
                 Snapshot old=undo.remove(0);
-                old.bitmap.recycle();
+                if (!old.bitmap.isRecycled()) old.bitmap.recycle();
             }
             undo.add(new Snapshot(next.layerIndex,layers.get(next.layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false)));
             activeLayer=next.layerIndex;
