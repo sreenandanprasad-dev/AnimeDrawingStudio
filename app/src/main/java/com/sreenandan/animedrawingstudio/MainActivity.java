@@ -87,6 +87,15 @@ public class MainActivity extends Activity {
                 drawingView.setEraser(false);
             });
         }
+        Button wheelButton = new Button(this);
+        wheelButton.setText("Wheel");
+        wheelButton.setTextSize(10);
+        wheelButton.setAllCaps(false);
+        wheelButton.setPadding(1,0,1,0);
+        wheelButton.setOnClickListener(v -> showColorWheel());
+        LinearLayout.LayoutParams wheelParams = new LinearLayout.LayoutParams(0,30,1);
+        wheelParams.setMargins(2,1,2,1);
+        colors.addView(wheelButton,wheelParams);
         tools.addView(colors);
 
         LinearLayout toolRow = new LinearLayout(this);
@@ -289,6 +298,169 @@ public class MainActivity extends Activity {
         parent.addView(b,lp);
         b.setOnClickListener(v -> action.run());
         return b;
+    }
+
+    private int dp(float value) {
+        return Math.round(value * getResources().getDisplayMetrics().density);
+    }
+
+    private void showColorWheel() {
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setGravity(Gravity.CENTER_HORIZONTAL);
+        panel.setPadding(dp(12),dp(8),dp(12),dp(4));
+
+        ColorWheelView wheel = new ColorWheelView();
+        wheel.setColor(currentColor);
+        TextView preview = new TextView(this);
+        preview.setText("Selected colour");
+        preview.setGravity(Gravity.CENTER);
+        preview.setTextColor(Color.BLACK);
+        preview.setBackgroundColor(currentColor);
+        LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(-1,dp(34));
+        previewParams.bottomMargin = dp(6);
+        panel.addView(preview,previewParams);
+
+        panel.addView(wheel,new LinearLayout.LayoutParams(dp(244),dp(244)));
+        TextView valueLabel = new TextView(this);
+        valueLabel.setText("Brightness");
+        valueLabel.setTextColor(Color.BLACK);
+        panel.addView(valueLabel);
+        SeekBar brightness = new SeekBar(this);
+        brightness.setMax(100);
+        brightness.setProgress(100);
+        panel.addView(brightness,new LinearLayout.LayoutParams(-1,dp(36)));
+        final int[] selected = {currentColor};
+        wheel.setOnColorChanged(color -> {
+            selected[0] = color;
+            preview.setBackgroundColor(color);
+        });
+        brightness.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar bar,int value,boolean fromUser) {
+                wheel.setBrightness(Math.max(1,value)/100f);
+                selected[0] = wheel.getSelectedColor();
+                preview.setBackgroundColor(selected[0]);
+            }
+            public void onStartTrackingTouch(SeekBar bar) {}
+            public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        new AlertDialog.Builder(this)
+                .setTitle("Colour Wheel")
+                .setView(panel)
+                .setNegativeButton("Cancel",null)
+                .setPositiveButton("Use colour",(dialog,which) -> {
+                    currentColor = selected[0];
+                    drawingView.setEraser(false);
+                })
+                .show();
+    }
+
+    private class ColorWheelView extends View {
+        private Bitmap wheelBitmap;
+        private final Paint wheelPaint = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+        private final Paint markerPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private float hue;
+        private float saturation = 1f;
+        private float brightness = 1f;
+        private float centerX,centerY,radius;
+        private java.util.function.IntConsumer colorChanged;
+
+        ColorWheelView() {
+            super(MainActivity.this);
+            markerPaint.setStyle(Paint.Style.STROKE);
+            markerPaint.setStrokeWidth(dp(2));
+            markerPaint.setColor(Color.WHITE);
+        }
+
+        void setColor(int color) {
+            float[] hsv = new float[3];
+            Color.colorToHSV(color,hsv);
+            hue=hsv[0];
+            saturation=hsv[1];
+            brightness=Math.max(0.01f,hsv[2]);
+            rebuildWheel();
+            invalidate();
+        }
+
+        void setOnColorChanged(java.util.function.IntConsumer listener) {
+            colorChanged=listener;
+        }
+
+        void setBrightness(float value) {
+            brightness=Math.max(0.01f,Math.min(1f,value));
+            rebuildWheel();
+            invalidate();
+            if(colorChanged!=null) colorChanged.accept(getSelectedColor());
+        }
+
+        int getSelectedColor() {
+            return Color.HSVToColor(new float[]{hue,saturation,brightness});
+        }
+
+        private void rebuildWheel() {
+            final int size=256;
+            if(wheelBitmap!=null && !wheelBitmap.isRecycled()) wheelBitmap.recycle();
+            wheelBitmap=Bitmap.createBitmap(size,size,Bitmap.Config.ARGB_8888);
+            int[] pixels=new int[size*size];
+            float c=(size-1)/2f;
+            float r=c;
+            for(int y=0;y<size;y++) for(int x=0;x<size;x++) {
+                float dx=x-c,dy=y-c;
+                float distance=(float)Math.sqrt(dx*dx+dy*dy);
+                int index=y*size+x;
+                if(distance<=r) {
+                    float angle=(float)Math.toDegrees(Math.atan2(dy,dx));
+                    float h=(angle+360f)%360f;
+                    float sat=Math.min(1f,distance/r);
+                    pixels[index]=Color.HSVToColor(new float[]{h,sat,brightness});
+                } else pixels[index]=Color.TRANSPARENT;
+            }
+            wheelBitmap.setPixels(pixels,0,size,0,0,size,size);
+        }
+
+        @Override protected void onSizeChanged(int w,int h,int oldw,int oldh) {
+            centerX=w/2f;
+            centerY=h/2f;
+            radius=Math.min(w,h)/2f-dp(3);
+            rebuildWheel();
+        }
+
+        @Override protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            if(wheelBitmap==null) rebuildWheel();
+            RectF bounds=new RectF(centerX-radius,centerY-radius,centerX+radius,centerY+radius);
+            canvas.drawBitmap(wheelBitmap,null,bounds,wheelPaint);
+            float markerX=centerX+(float)Math.cos(Math.toRadians(hue))*saturation*radius;
+            float markerY=centerY+(float)Math.sin(Math.toRadians(hue))*saturation*radius;
+            markerPaint.setColor(Color.BLACK);
+            canvas.drawCircle(markerX,markerY,dp(7),markerPaint);
+            markerPaint.setColor(Color.WHITE);
+            canvas.drawCircle(markerX,markerY,dp(5),markerPaint);
+            Paint centerPaint=new Paint(Paint.ANTI_ALIAS_FLAG);
+            centerPaint.setColor(getSelectedColor());
+            centerPaint.setStyle(Paint.Style.FILL);
+            canvas.drawCircle(centerX,centerY,dp(5),centerPaint);
+        }
+
+        @Override public boolean onTouchEvent(MotionEvent event) {
+            if(event.getActionMasked()==MotionEvent.ACTION_DOWN
+                    || event.getActionMasked()==MotionEvent.ACTION_MOVE) {
+                float dx=event.getX()-centerX;
+                float dy=event.getY()-centerY;
+                float distance=(float)Math.hypot(dx,dy);
+                if(distance>radius) {
+                    dx=dx*radius/distance;
+                    dy=dy*radius/distance;
+                    distance=radius;
+                }
+                hue=(float)(Math.toDegrees(Math.atan2(dy,dx))+360.0)%360f;
+                saturation=Math.min(1f,distance/radius);
+                invalidate();
+                if(colorChanged!=null) colorChanged.accept(getSelectedColor());
+                return true;
+            }
+            return event.getActionMasked()==MotionEvent.ACTION_UP;
+        }
     }
 
     private void showLayers() {
