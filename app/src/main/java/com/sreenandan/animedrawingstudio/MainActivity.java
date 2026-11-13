@@ -23,7 +23,7 @@ public class MainActivity extends Activity {
     private int stabilizer = 0;
     private int brushPreset = 0;
     private Button brushToolButton, eraserToolButton, fillToolButton;
-    private Button lineToolButton, rectToolButton, ellipseToolButton;
+    private Button lineToolButton, rectToolButton, ellipseToolButton, eyedropperToolButton;
     private TextView activeToolLabel;
     private Button symmetryButton;
 
@@ -101,39 +101,53 @@ public class MainActivity extends Activity {
         LinearLayout toolRow = new LinearLayout(this);
         toolRow.setGravity(Gravity.CENTER_VERTICAL);
         brushToolButton = addButton(toolRow, "✎", () -> {
+            drawingView.setEyedropper(false);
             drawingView.setEraser(false);
             drawingView.setBucketTool(false);
             drawingView.setShapeTool(0);
             setActiveTool("BRUSH");
         });
         eraserToolButton = addButton(toolRow, "▰", () -> {
+            drawingView.setEyedropper(false);
             drawingView.setEraser(true);
             drawingView.setBucketTool(false);
             drawingView.setShapeTool(0);
             setActiveTool("ERASER");
         });
         fillToolButton = addButton(toolRow, "▧", () -> {
+            drawingView.setEyedropper(false);
             drawingView.setBucketTool(true);
             drawingView.setShapeTool(0);
             setActiveTool("FILL");
         });
         lineToolButton = addButton(toolRow, "╱", () -> {
+            drawingView.setEyedropper(false);
             drawingView.setEraser(false);
             drawingView.setBucketTool(false);
             drawingView.setShapeTool(1);
             setActiveTool("LINE");
         });
         rectToolButton = addButton(toolRow, "□", () -> {
+            drawingView.setEyedropper(false);
             drawingView.setEraser(false);
             drawingView.setBucketTool(false);
             drawingView.setShapeTool(2);
             setActiveTool("RECT");
         });
         ellipseToolButton = addButton(toolRow, "○", () -> {
+            drawingView.setEyedropper(false);
             drawingView.setEraser(false);
             drawingView.setBucketTool(false);
             drawingView.setShapeTool(3);
             setActiveTool("ELLIPSE");
+        });
+        eyedropperToolButton = addButton(toolRow, "Pick", () -> {
+            drawingView.setEyedropper(true);
+            drawingView.setBucketTool(false);
+            drawingView.setShapeTool(0);
+            drawingView.setEraser(false);
+            setActiveTool("PICKER");
+            Toast.makeText(this,"Tap the canvas to pick a colour",Toast.LENGTH_SHORT).show();
         });
         activeToolLabel = new TextView(this);
         activeToolLabel.setText("BRUSH");
@@ -266,6 +280,7 @@ public class MainActivity extends Activity {
         styleToolButton(lineToolButton,"LINE".equals(tool));
         styleToolButton(rectToolButton,"RECT".equals(tool));
         styleToolButton(ellipseToolButton,"ELLIPSE".equals(tool));
+        styleToolButton(eyedropperToolButton,"PICKER".equals(tool));
     }
 
     private void styleToolButton(Button button, boolean active) {
@@ -655,6 +670,7 @@ public class MainActivity extends Activity {
         private float reversalScore=0f;
         private boolean eraser=false;
         private boolean bucketTool=false;
+        private boolean eyedropperTool=false;
         private boolean symmetryEnabled=false;
         private int shapeTool=0;
         private boolean shapeInProgress=false;
@@ -723,6 +739,26 @@ public class MainActivity extends Activity {
             } else if(preset==4) {
                 target.setMaskFilter(new BlurMaskFilter(Math.max(2f,width*0.9f),BlurMaskFilter.Blur.NORMAL));
             }
+        }
+
+        void setEyedropper(boolean enabled) { eyedropperTool=enabled; }
+        
+        private int sampleCompositePixel(int x,int y) {
+            Bitmap sample=Bitmap.createBitmap(1,1,Bitmap.Config.ARGB_8888);
+            Canvas sampleCanvas=new Canvas(sample);
+            sampleCanvas.drawColor(Color.WHITE);
+            Rect sourceRect=new Rect(x,y,x+1,y+1);
+            Rect destRect=new Rect(0,0,1,1);
+            for (Layer layer:layers) {
+                if (layer.visible && layer.opacity>0) {
+                    configureLayerPaint(layer);
+                    sampleCanvas.drawBitmap(layer.bitmap,sourceRect,destRect,layerPaint);
+                }
+            }
+            resetLayerPaint();
+            int result=sample.getPixel(0,0);
+            sample.recycle();
+            return result;
         }
 
         void resetView() {
@@ -1034,6 +1070,16 @@ public class MainActivity extends Activity {
             switch(event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     multiTouch=false;
+                    if (eyedropperTool) {
+                        if (x>=0 && y>=0 && x<1600 && y<2200) {
+                            currentColor=sampleCompositePixel(Math.max(0,Math.min(1599,(int)x)),
+                                    Math.max(0,Math.min(2199,(int)y)));
+                            eyedropperTool=false;
+                            setActiveTool("BRUSH");
+                            Toast.makeText(MainActivity.this,"Colour picked",Toast.LENGTH_SHORT).show();
+                        }
+                        return true;
+                    }
                     if (bucketTool) {
                         if (x>=0 && y>=0 && x<1600 && y<2200) fillAt(Math.round(x),Math.round(y));
                         return true;
