@@ -812,7 +812,21 @@ public class MainActivity extends Activity {
         private class Snapshot {
             int layerIndex;
             Bitmap bitmap;
+            boolean regionMove=false;
+            int sourceX,sourceY,destX,destY;
+            Bitmap sourceBitmap,destinationBitmap;
             Snapshot(int index,Bitmap image) { layerIndex=index; bitmap=image; }
+            Snapshot(int index,int sx,int sy,int dx,int dy,Bitmap source,Bitmap destination) {
+                layerIndex=index; regionMove=true;
+                sourceX=sx; sourceY=sy; destX=dx; destY=dy;
+                sourceBitmap=source; destinationBitmap=destination;
+            }
+            void recycle() {
+                if(bitmap!=null&&!bitmap.isRecycled()) bitmap.recycle();
+                if(sourceBitmap!=null&&!sourceBitmap.isRecycled()) sourceBitmap.recycle();
+                if(destinationBitmap!=null&&!destinationBitmap.isRecycled()) destinationBitmap.recycle();
+                bitmap=null; sourceBitmap=null; destinationBitmap=null;
+            }
         }
 
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -1076,15 +1090,43 @@ public class MainActivity extends Activity {
         }
         private void finishSelectionMove() {
             if(!movingSelection || movingSelectionBitmap==null) return;
-            Canvas layerCanvas=new Canvas(layers.get(activeLayer).bitmap);
-            layerCanvas.drawBitmap(movingSelectionBitmap,selectionBitmapLeft+selectionMoveDX,
-                    selectionBitmapTop+selectionMoveDY,null);
-            movingSelectionBitmap.recycle();
-            movingSelectionBitmap=null;
-            selectionStartX+=selectionMoveDX;
-            selectionEndX+=selectionMoveDX;
-            selectionStartY+=selectionMoveDY;
-            selectionEndY+=selectionMoveDY;
+            int width=movingSelectionBitmap.getWidth();
+            int height=movingSelectionBitmap.getHeight();
+            int destX=Math.max(0,Math.min(1600-width,Math.round(selectionBitmapLeft+selectionMoveDX)));
+            int destY=Math.max(0,Math.min(2200-height,Math.round(selectionBitmapTop+selectionMoveDY)));
+            Bitmap destinationBefore=null;
+            try {
+                destinationBefore=Bitmap.createBitmap(layers.get(activeLayer).bitmap,destX,destY,width,height);
+                trimUndoHistory(undo);
+                clearRedoHistory();
+                Snapshot moveUndo=new Snapshot(activeLayer,selectionBitmapLeft,selectionBitmapTop,
+                        destX,destY,movingSelectionBitmap,destinationBefore);
+                undo.add(moveUndo);
+                movingSelectionBitmap=null; // The undo snapshot now owns the original pixels.
+                Canvas layerCanvas=new Canvas(layers.get(activeLayer).bitmap);
+                layerCanvas.drawBitmap(moveUndo.sourceBitmap,destX,destY,null);
+            } catch(OutOfMemoryError memoryError) {
+                if(destinationBefore!=null&&!destinationBefore.isRecycled()) destinationBefore.recycle();
+                // Keep the original artwork intact if a safe undo record cannot be allocated.
+                Canvas restoreCanvas=new Canvas(layers.get(activeLayer).bitmap);
+                restoreCanvas.drawBitmap(movingSelectionBitmap,selectionBitmapLeft,selectionBitmapTop,null);
+                movingSelectionBitmap.recycle();
+                movingSelectionBitmap=null;
+                Toast.makeText(MainActivity.this,"Not enough memory to move this selection. Try a smaller area.",Toast.LENGTH_LONG).show();
+                selectionMoveDX=selectionMoveDY=0f;
+                selectionMoveBaseDX=selectionMoveBaseDY=0f;
+                movingSelection=false;
+                invalidate();
+                return;
+            }
+            float appliedDX=destX-selectionBitmapLeft;
+            float appliedDY=destY-selectionBitmapTop;
+            selectionStartX+=appliedDX;
+            selectionEndX+=appliedDX;
+            selectionStartY+=appliedDY;
+            selectionEndY+=appliedDY;
+            selectionBitmapLeft=destX;
+            selectionBitmapTop=destY;
             selectionMoveDX=selectionMoveDY=0f;
             selectionMoveBaseDX=selectionMoveBaseDY=0f;
             movingSelection=false;
@@ -1323,49 +1365,106 @@ public class MainActivity extends Activity {
         }
 
         void clearHistory() {
-            for (Snapshot s:undo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
-            for (Snapshot s:redo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
+            for (Snapshot item:undo) item.recycle();
+            for (Snapshot item:redo) item.recycle();
             undo.clear(); redo.clear();
         }
-        void saveUndo() {
-            // Full-canvas ARGB snapshots are expensive on phones with limited heap.
-            // Keep only the two most recent undo states and release old bitmaps promptly.
-            while (undo.size()>=2) {
-                Snapshot old=undo.remove(0);
-                if (!old.bitmap.isRecycled()) old.bitmap.recycle();
-            }
-            Bitmap snapshot=layers.get(activeLayer).bitmap.copy(Bitmap.Config.ARGB_8888,false);
-            undo.add(new Snapshot(activeLayer,snapshot));
-            for (Snapshot s:redo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
+        private void trimUndoHistory(ArrayList<Snapshot> history) {
+            while(history.size()>=2) history.remove(0).recycle();
+        }
+        private void clearRedoHistory() {
+            for(Snapshot item:redo) item.recycle();
             redo.clear();
         }
+        void saveUndo() {
+            trimUndoHistory(undo);
+            Bitmap snapshot=layers.get(activeLayer).bitmap.copy(Bitmap.Config.ARGB_8888,false);
+            undo.add(new Snapshot(activeLayer,snapshot));
+            clearRedoHistory();
+        }
+        private Snapshot captureRegionState(int layerIndex,int sx,int sy,int dx,int dy,int width,int height) {
+            Bitmap source=Bitmap.createBitmap(layers.get(layerIndex).bitmap,sx,sy,width,height);
+            Bitmap destination=null;
+            try {
+                destination=Bitmap.createBitmap(layers.get(layerIndex).bitmap,dx,dy,width,height);
+                return new Snapshot(layerIndex,sx,sy,dx,dy,source,destination);
+            } catch(OutOfMemoryError error) {
+                if(source!=null&&!source.isRecycled()) source.recycle();
+                if(destination!=null&&!destination.isRecycled()) destination.recycle();
+                throw error;
+            }
+        }
+        private void restoreRegion(Snapshot item,boolean redoDirection) {
+            Canvas canvas=new Canvas(layers.get(item.layerIndex).bitmap);
+            if(redoDirection) {
+                canvas.drawBitmap(item.sourceBitmap,item.sourceX,item.sourceY,null);
+                canvas.drawBitmap(item.destinationBitmap,item.destX,item.destY,null);
+            } else {
+                canvas.drawBitmap(item.destinationBitmap,item.destX,item.destY,null);
+                canvas.drawBitmap(item.sourceBitmap,item.sourceX,item.sourceY,null);
+            }
+            item.recycle();
+            invalidate();
+        }
         void restore(Snapshot snapshot) {
+            if(snapshot.regionMove) {
+                restoreRegion(snapshot,false);
+                return;
+            }
             Layer layer=layers.get(snapshot.layerIndex);
             Canvas c=new Canvas(layer.bitmap);
             c.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR);
             c.drawBitmap(snapshot.bitmap,0,0,null);
-            snapshot.bitmap.recycle();
+            snapshot.recycle();
             invalidate();
         }
         void undo() {
             if (undo.isEmpty()) return;
-            Snapshot current=new Snapshot(undo.get(undo.size()-1).layerIndex,
-                    layers.get(undo.get(undo.size()-1).layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false));
-            redo.add(current);
             Snapshot previous=undo.remove(undo.size()-1);
-            activeLayer=previous.layerIndex;
-            restore(previous);
+            try {
+                Snapshot current;
+                if(previous.regionMove) {
+                    current=captureRegionState(previous.layerIndex,previous.sourceX,previous.sourceY,
+                            previous.destX,previous.destY,
+                            previous.sourceBitmap.getWidth(),previous.sourceBitmap.getHeight());
+                    redo.add(current);
+                    activeLayer=previous.layerIndex;
+                    restoreRegion(previous,true);
+                } else {
+                    current=new Snapshot(previous.layerIndex,
+                            layers.get(previous.layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false));
+                    redo.add(current);
+                    activeLayer=previous.layerIndex;
+                    restore(previous);
+                }
+            } catch(OutOfMemoryError error) {
+                undo.add(previous);
+                Toast.makeText(MainActivity.this,"Not enough memory to undo this change",Toast.LENGTH_SHORT).show();
+            }
         }
         void redo() {
             if (redo.isEmpty()) return;
             Snapshot next=redo.remove(redo.size()-1);
-            while (undo.size()>=2) {
-                Snapshot old=undo.remove(0);
-                if (!old.bitmap.isRecycled()) old.bitmap.recycle();
+            try {
+                trimUndoHistory(undo);
+                Snapshot current;
+                if(next.regionMove) {
+                    current=captureRegionState(next.layerIndex,next.sourceX,next.sourceY,next.destX,next.destY,
+                            next.sourceBitmap.getWidth(),next.sourceBitmap.getHeight());
+                    undo.add(current);
+                    activeLayer=next.layerIndex;
+                    restoreRegion(next,false);
+                } else {
+                    current=new Snapshot(next.layerIndex,
+                            layers.get(next.layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false));
+                    undo.add(current);
+                    activeLayer=next.layerIndex;
+                    restore(next);
+                }
+            } catch(OutOfMemoryError error) {
+                redo.add(next);
+                Toast.makeText(MainActivity.this,"Not enough memory to redo this change",Toast.LENGTH_SHORT).show();
             }
-            undo.add(new Snapshot(next.layerIndex,layers.get(next.layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false)));
-            activeLayer=next.layerIndex;
-            restore(next);
         }
         // PaintMan-style contiguous fill. The visible composite is sampled so
         // line art on a separate layer can define the regions to be coloured.
@@ -1584,7 +1683,6 @@ public class MainActivity extends Activity {
                             int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
                             if(right>left && bottom>top) {
                                 try {
-                                    saveUndo();
                                     movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,right-left,bottom-top);
                                 } catch (OutOfMemoryError memoryError) {
                                     if(movingSelectionBitmap!=null && !movingSelectionBitmap.isRecycled()) movingSelectionBitmap.recycle();
