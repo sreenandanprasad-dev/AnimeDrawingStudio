@@ -1020,7 +1020,9 @@ public class MainActivity extends Activity {
             int[] queue=new int[4096];
             int head=0,tail=0,capacity=queue.length;
             queue[tail++]=start;
-            final int tolerance=55;
+            // Use a stricter colour match when zoomed so anti-aliased outline edges
+            // are less likely to be crossed by the bucket's contiguous-region search.
+            final int tolerance=zoom>=2f ? 22 : 32;
             boolean changed=false;
             while(head<tail) {
                 int seed=queue[head++];
