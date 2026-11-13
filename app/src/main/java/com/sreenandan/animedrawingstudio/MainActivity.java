@@ -23,7 +23,7 @@ public class MainActivity extends Activity {
     private int stabilizer = 0;
     private int brushPreset = 0;
     private Button brushToolButton, eraserToolButton, fillToolButton;
-    private Button lineToolButton, rectToolButton, ellipseToolButton, eyedropperToolButton;
+    private Button lineToolButton, rectToolButton, ellipseToolButton, eyedropperToolButton, selectionToolButton;
     private TextView activeToolLabel;
     private Button symmetryButton;
 
@@ -137,6 +137,11 @@ public class MainActivity extends Activity {
             drawingView.setEraser(false);
             setActiveTool("PICKER");
             Toast.makeText(this,"Tap the canvas to pick a colour",Toast.LENGTH_SHORT).show();
+        });
+        selectionToolButton = addButton(toolRow, "Sel", () -> {
+            drawingView.setSelectionTool(true);
+            setActiveTool("SELECT");
+            Toast.makeText(this,"Drag on the canvas to make a rectangular selection",Toast.LENGTH_SHORT).show();
         });
         activeToolLabel = new TextView(this);
         activeToolLabel.setText("BRUSH");
@@ -270,6 +275,7 @@ public class MainActivity extends Activity {
         styleToolButton(rectToolButton,"RECT".equals(tool));
         styleToolButton(ellipseToolButton,"ELLIPSE".equals(tool));
         styleToolButton(eyedropperToolButton,"PICKER".equals(tool));
+        styleToolButton(selectionToolButton,"SELECT".equals(tool));
     }
 
     private void styleToolButton(Button button, boolean active) {
@@ -685,6 +691,10 @@ public class MainActivity extends Activity {
         private boolean eraser=false;
         private boolean bucketTool=false;
         private boolean eyedropperTool=false;
+        private boolean selectionTool=false;
+        private boolean selectionInProgress=false;
+        private boolean hasSelection=false;
+        private float selectionStartX,selectionStartY,selectionEndX,selectionEndY;
         private boolean symmetryEnabled=false;
         private int shapeTool=0;
         private boolean shapeInProgress=false;
@@ -757,7 +767,20 @@ public class MainActivity extends Activity {
             }
         }
 
-        void setEyedropper(boolean enabled) { eyedropperTool=enabled; }
+        void setEyedropper(boolean enabled) {
+            eyedropperTool=enabled;
+            if(enabled) selectionTool=false;
+        }
+        void setSelectionTool(boolean enabled) {
+            selectionTool=enabled;
+            eyedropperTool=false;
+            eraser=false;
+            bucketTool=false;
+            shapeTool=0;
+            shapeInProgress=false;
+            strokeInProgress=false;
+            invalidate();
+        }
         
         private int sampleCompositePixel(int x,int y) {
             Bitmap sample=Bitmap.createBitmap(1,1,Bitmap.Config.ARGB_8888);
@@ -899,9 +922,9 @@ public class MainActivity extends Activity {
         void renameActiveLayer(String name) {
             layers.get(activeLayer).name=name;
         }
-        void setEraser(boolean value) { eraser=value; bucketTool=false; shapeTool=0; }
-        void setBucketTool(boolean value) { bucketTool=value; eraser=false; shapeTool=0; invalidate(); }
-        void setShapeTool(int value) { shapeTool=Math.max(0,Math.min(3,value)); eraser=false; bucketTool=false; invalidate(); }
+        void setEraser(boolean value) { eraser=value; bucketTool=false; shapeTool=0; selectionTool=false; }
+        void setBucketTool(boolean value) { bucketTool=value; eraser=false; shapeTool=0; selectionTool=false; invalidate(); }
+        void setShapeTool(int value) { shapeTool=Math.max(0,Math.min(3,value)); eraser=false; bucketTool=false; selectionTool=false; invalidate(); }
         void setBrushSize(float value) { brushSize=value; paint.setStrokeWidth(value); }
         void setBrushPreset(int value) { brushPreset=Math.max(0,Math.min(4,value)); }
         void setBrushOpacity(int value) { brushOpacity=Math.max(1,Math.min(100,value)); }
@@ -1130,6 +1153,21 @@ public class MainActivity extends Activity {
                 previewPaint.setColorFilter(null);
                 previewPaint.setMaskFilter(null);
             }
+            if (hasSelection || selectionInProgress) {
+                Paint marquee = new Paint(Paint.ANTI_ALIAS_FLAG);
+                marquee.setStyle(Paint.Style.STROKE);
+                marquee.setStrokeWidth(3f/(scale*zoom));
+                marquee.setColor(Color.WHITE);
+                marquee.setPathEffect(new DashPathEffect(new float[]{10f/(scale*zoom),6f/(scale*zoom)},0));
+                float left=Math.min(selectionStartX,selectionEndX);
+                float top=Math.min(selectionStartY,selectionEndY);
+                float right=Math.max(selectionStartX,selectionEndX);
+                float bottom=Math.max(selectionStartY,selectionEndY);
+                canvas.drawRect(left,top,right,bottom,marquee);
+                marquee.setColor(Color.BLACK);
+                marquee.setPathEffect(new DashPathEffect(new float[]{10f/(scale*zoom),6f/(scale*zoom)},10f/(scale*zoom)));
+                canvas.drawRect(left,top,right,bottom,marquee);
+            }
             if (symmetryEnabled) {
                 Paint axis = new Paint(Paint.ANTI_ALIAS_FLAG);
                 axis.setColor(Color.rgb(40,120,220));
@@ -1163,6 +1201,17 @@ public class MainActivity extends Activity {
             switch(event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     multiTouch=false;
+                    if (selectionTool) {
+                        selectionStartX=Math.max(0f,Math.min(1600f,x));
+                        selectionStartY=Math.max(0f,Math.min(2200f,y));
+                        selectionEndX=selectionStartX;
+                        selectionEndY=selectionStartY;
+                        selectionInProgress=true;
+                        hasSelection=false;
+                        drawingGesture=true;
+                        invalidate();
+                        return true;
+                    }
                     if (eyedropperTool) {
                         if (x>=0 && y>=0 && x<1600 && y<2200) {
                             currentColor=sampleCompositePixel(Math.max(0,Math.min(1599,(int)x)),
@@ -1265,6 +1314,12 @@ public class MainActivity extends Activity {
                         return true;
                     }
                     if (multiTouch || !drawingGesture) return true;
+                    if (selectionInProgress) {
+                        selectionEndX=Math.max(0f,Math.min(1600f,x));
+                        selectionEndY=Math.max(0f,Math.min(2200f,y));
+                        invalidate();
+                        return true;
+                    }
                     if (shapeInProgress) {
                         shapeEndX=x;
                         shapeEndY=y;
@@ -1347,6 +1402,16 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_UP:
+                    if (selectionInProgress) {
+                        selectionEndX=Math.max(0f,Math.min(1600f,x));
+                        selectionEndY=Math.max(0f,Math.min(2200f,y));
+                        selectionInProgress=false;
+                        drawingGesture=false;
+                        hasSelection=Math.abs(selectionEndX-selectionStartX)>=2f
+                                && Math.abs(selectionEndY-selectionStartY)>=2f;
+                        invalidate();
+                        return true;
+                    }
                     if (pendingBucketFill) {
                         if (!multiTouch) fillAt(pendingFillX,pendingFillY);
                         pendingBucketFill=false;
@@ -1412,6 +1477,7 @@ public class MainActivity extends Activity {
                     drawingGesture=false;
                     strokeInProgress=false;
                     shapeInProgress=false;
+                    selectionInProgress=false;
                     currentPath.reset();
                     paint.setXfermode(null);
                     invalidate();
