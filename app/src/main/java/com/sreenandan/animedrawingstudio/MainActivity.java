@@ -1429,7 +1429,7 @@ public class MainActivity extends Activity {
                             previous.sourceBitmap.getWidth(),previous.sourceBitmap.getHeight());
                     redo.add(current);
                     activeLayer=previous.layerIndex;
-                    restoreRegion(previous,true);
+                    restoreRegion(previous,false);
                 } else {
                     current=new Snapshot(previous.layerIndex,
                             layers.get(previous.layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false));
@@ -1453,7 +1453,7 @@ public class MainActivity extends Activity {
                             next.sourceBitmap.getWidth(),next.sourceBitmap.getHeight());
                     undo.add(current);
                     activeLayer=next.layerIndex;
-                    restoreRegion(next,false);
+                    restoreRegion(next,true);
                 } else {
                     current=new Snapshot(next.layerIndex,
                             layers.get(next.layerIndex).bitmap.copy(Bitmap.Config.ARGB_8888,false));
