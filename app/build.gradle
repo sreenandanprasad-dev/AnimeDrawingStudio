@@ -11,8 +11,8 @@ android {
         applicationId 'com.sreenandan.animedrawingstudio.stable'
         minSdk 23
         targetSdk 35
-        versionCode 36
-        versionName '2.12.6'
+        versionCode 37
+        versionName '2.12.7'
     }
 
     signingConfigs {
