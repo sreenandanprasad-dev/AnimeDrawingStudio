@@ -804,6 +804,10 @@ public class MainActivity extends Activity {
                 bitmap=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
                 bitmap.eraseColor(Color.TRANSPARENT);
             }
+            Layer(String label,Bitmap source) {
+                name=label;
+                bitmap=source.copy(Bitmap.Config.ARGB_8888,false);
+            }
         }
         private class Snapshot {
             int layerIndex;
@@ -965,9 +969,17 @@ public class MainActivity extends Activity {
             int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
             int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
             if(right<=left || bottom<=top) return;
-            saveUndo();
-            movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,
-                    right-left,bottom-top);
+            try {
+                saveUndo();
+                movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,
+                        right-left,bottom-top);
+            } catch (OutOfMemoryError memoryError) {
+                if(movingSelectionBitmap!=null && !movingSelectionBitmap.isRecycled()) movingSelectionBitmap.recycle();
+                movingSelectionBitmap=null;
+                System.gc();
+                Toast.makeText(MainActivity.this,"Not enough memory to duplicate this selection. Try a smaller area.",Toast.LENGTH_LONG).show();
+                return;
+            }
             selectionBitmapLeft=left;
             selectionBitmapTop=top;
             movingSelection=true;
@@ -1205,9 +1217,14 @@ public class MainActivity extends Activity {
         boolean duplicateActiveLayer() {
             if (layers.size()>=6) return false;
             Layer source=layers.get(activeLayer);
-            Layer copy=new Layer(source.name + " copy");
-            copy.bitmap.recycle();
-            copy.bitmap=source.bitmap.copy(Bitmap.Config.ARGB_8888,false);
+            Layer copy;
+            try {
+                copy=new Layer(source.name + " copy",source.bitmap);
+            } catch (OutOfMemoryError memoryError) {
+                System.gc();
+                Toast.makeText(MainActivity.this,"Not enough memory to duplicate this layer.",Toast.LENGTH_LONG).show();
+                return false;
+            }
             copy.visible=source.visible;
             copy.opacity=source.opacity;
             copy.blendMode=source.blendMode;
@@ -1555,8 +1572,16 @@ public class MainActivity extends Activity {
                             int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
                             int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
                             if(right>left && bottom>top) {
-                                saveUndo();
-                                movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,right-left,bottom-top);
+                                try {
+                                    saveUndo();
+                                    movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,right-left,bottom-top);
+                                } catch (OutOfMemoryError memoryError) {
+                                    if(movingSelectionBitmap!=null && !movingSelectionBitmap.isRecycled()) movingSelectionBitmap.recycle();
+                                    movingSelectionBitmap=null;
+                                    System.gc();
+                                    Toast.makeText(MainActivity.this,"Not enough memory to move this selection. Try a smaller area.",Toast.LENGTH_LONG).show();
+                                    return true;
+                                }
                                 selectionBitmapLeft=left;
                                 selectionBitmapTop=top;
                                 Canvas clearCanvas=new Canvas(layers.get(activeLayer).bitmap);
