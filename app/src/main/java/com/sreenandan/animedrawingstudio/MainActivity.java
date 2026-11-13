@@ -694,7 +694,10 @@ public class MainActivity extends Activity {
         private boolean selectionTool=false;
         private boolean selectionInProgress=false;
         private boolean hasSelection=false;
+        private boolean movingSelection=false;
+        private Bitmap movingSelectionBitmap=null;
         private float selectionStartX,selectionStartY,selectionEndX,selectionEndY;
+        private float selectionMoveStartX,selectionMoveStartY,selectionMoveDX,selectionMoveDY;
         private boolean symmetryEnabled=false;
         private int shapeTool=0;
         private boolean shapeInProgress=false;
@@ -779,6 +782,27 @@ public class MainActivity extends Activity {
             shapeTool=0;
             shapeInProgress=false;
             strokeInProgress=false;
+            if(!enabled) finishSelectionMove();
+            invalidate();
+        }
+        private boolean pointInsideSelection(float px,float py) {
+            return hasSelection && px>=Math.min(selectionStartX,selectionEndX)
+                    && px<=Math.max(selectionStartX,selectionEndX)
+                    && py>=Math.min(selectionStartY,selectionEndY)
+                    && py<=Math.max(selectionStartY,selectionEndY);
+        }
+        private void finishSelectionMove() {
+            if(!movingSelection || movingSelectionBitmap==null) return;
+            Canvas layerCanvas=new Canvas(layers.get(activeLayer).bitmap);
+            layerCanvas.drawBitmap(movingSelectionBitmap,selectionMoveDX,selectionMoveDY,null);
+            movingSelectionBitmap.recycle();
+            movingSelectionBitmap=null;
+            selectionStartX+=selectionMoveDX;
+            selectionEndX+=selectionMoveDX;
+            selectionStartY+=selectionMoveDY;
+            selectionEndY+=selectionMoveDY;
+            selectionMoveDX=selectionMoveDY=0f;
+            movingSelection=false;
             invalidate();
         }
         
@@ -1137,6 +1161,10 @@ public class MainActivity extends Activity {
             background.setColor(Color.WHITE);
             canvas.drawRect(0,0,1600,2200,background);
             drawLayerStack(canvas);
+            if(movingSelection && movingSelectionBitmap!=null) {
+                canvas.drawBitmap(movingSelectionBitmap,
+                        selectionMoveDX,selectionMoveDY,null);
+            }
             if (strokeInProgress && !strokeEraser) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                 drawMaskedPreview(canvas,activeLayer,() ->
@@ -1202,6 +1230,32 @@ public class MainActivity extends Activity {
                 case MotionEvent.ACTION_DOWN:
                     multiTouch=false;
                     if (selectionTool) {
+                        if(pointInsideSelection(x,y)) {
+                            if(layers.get(activeLayer).alphaLocked) {
+                                Toast.makeText(MainActivity.this,"Turn off Alpha Lock to move this selection",Toast.LENGTH_SHORT).show();
+                                return true;
+                            }
+                            int left=Math.max(0,(int)Math.floor(Math.min(selectionStartX,selectionEndX)));
+                            int top=Math.max(0,(int)Math.floor(Math.min(selectionStartY,selectionEndY)));
+                            int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
+                            int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
+                            if(right>left && bottom>top) {
+                                saveUndo();
+                                movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,right-left,bottom-top);
+                                Canvas clearCanvas=new Canvas(layers.get(activeLayer).bitmap);
+                                Paint clearPaint=new Paint();
+                                clearPaint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+                                clearCanvas.drawRect(left,top,right,bottom,clearPaint);
+                                clearPaint.setXfermode(null);
+                                movingSelection=true;
+                                selectionMoveStartX=x;
+                                selectionMoveStartY=y;
+                                selectionMoveDX=selectionMoveDY=0f;
+                                drawingGesture=true;
+                                invalidate();
+                                return true;
+                            }
+                        }
                         selectionStartX=Math.max(0f,Math.min(1600f,x));
                         selectionStartY=Math.max(0f,Math.min(2200f,y));
                         selectionEndX=selectionStartX;
@@ -1278,6 +1332,7 @@ public class MainActivity extends Activity {
                     multiTouch=true;
                     // Multi-touch is reserved for canvas navigation, not selection.
                     selectionInProgress=false;
+                    if(movingSelection) finishSelectionMove();
                     drawingGesture=false;
                     // A second finger means this is a zoom/rotate gesture, not a fill tap.
                     pendingBucketFill=false;
@@ -1317,6 +1372,12 @@ public class MainActivity extends Activity {
                         return true;
                     }
                     if (multiTouch || !drawingGesture) return true;
+                    if(movingSelection) {
+                        selectionMoveDX=x-selectionMoveStartX;
+                        selectionMoveDY=y-selectionMoveStartY;
+                        invalidate();
+                        return true;
+                    }
                     if (selectionInProgress) {
                         selectionEndX=Math.max(0f,Math.min(1600f,x));
                         selectionEndY=Math.max(0f,Math.min(2200f,y));
@@ -1405,6 +1466,13 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_UP:
+                    if(movingSelection) {
+                        selectionMoveDX=x-selectionMoveStartX;
+                        selectionMoveDY=y-selectionMoveStartY;
+                        finishSelectionMove();
+                        drawingGesture=false;
+                        return true;
+                    }
                     if (selectionInProgress) {
                         selectionEndX=Math.max(0f,Math.min(1600f,x));
                         selectionEndY=Math.max(0f,Math.min(2200f,y));
@@ -1481,6 +1549,7 @@ public class MainActivity extends Activity {
                     strokeInProgress=false;
                     shapeInProgress=false;
                     selectionInProgress=false;
+                    if(movingSelection) finishSelectionMove();
                     currentPath.reset();
                     paint.setXfermode(null);
                     invalidate();
