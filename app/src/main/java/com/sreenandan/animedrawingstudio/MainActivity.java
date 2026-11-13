@@ -377,7 +377,9 @@ public class MainActivity extends Activity {
             Color.colorToHSV(color,hsv);
             hue=hsv[0];
             saturation=hsv[1];
-            brightness=Math.max(0.01f,hsv[2]);
+            // Keep the wheel fully visible even when the current drawing colour is black.
+            // Brightness is adjusted separately with the slider.
+            brightness=1f;
             rebuildWheel();
             invalidate();
         }
