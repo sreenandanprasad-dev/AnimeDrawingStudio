@@ -353,6 +353,28 @@ public class MainActivity extends Activity {
                     });
                     opacityRow.addView(layerOpacity,new LinearLayout.LayoutParams(0,32,1));
                     rows.addView(opacityRow);
+                    LinearLayout blendRow = new LinearLayout(MainActivity.this);
+                    blendRow.setGravity(Gravity.CENTER_VERTICAL);
+                    TextView blendLabel = new TextView(MainActivity.this);
+                    blendLabel.setText("Blend");
+                    blendLabel.setTextColor(Color.BLACK);
+                    blendLabel.setTextSize(11);
+                    blendRow.addView(blendLabel,new LinearLayout.LayoutParams(82,36));
+                    Spinner blendSpinner = new Spinner(MainActivity.this);
+                    String[] blendNames = {"Normal","Multiply","Screen","Add","Darken","Lighten"};
+                    ArrayAdapter<String> blendAdapter = new ArrayAdapter<>(MainActivity.this,
+                            android.R.layout.simple_spinner_item,blendNames);
+                    blendAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                    blendSpinner.setAdapter(blendAdapter);
+                    blendSpinner.setSelection(drawingView.getLayerBlendMode(index));
+                    blendSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+                        public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long id) {
+                            drawingView.setLayerBlendMode(index,position);
+                        }
+                        public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+                    });
+                    blendRow.addView(blendSpinner,new LinearLayout.LayoutParams(0,40,1));
+                    rows.addView(blendRow);
                     View line = new View(MainActivity.this);
                     line.setBackgroundColor(Color.DKGRAY);
                     rows.addView(line,new LinearLayout.LayoutParams(-1,1));
@@ -423,6 +445,7 @@ public class MainActivity extends Activity {
             String name;
             boolean visible=true;
             int opacity=100;
+            int blendMode=0;
             Layer(String label) {
                 name=label;
                 bitmap=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
@@ -542,6 +565,21 @@ public class MainActivity extends Activity {
         String getActiveLayerName() { return layers.get(activeLayer).name; }
         boolean isLayerVisible(int index) { return layers.get(index).visible; }
         int getLayerOpacity(int index) { return layers.get(index).opacity; }
+        int getLayerBlendMode(int index) { return layers.get(index).blendMode; }
+        void setLayerBlendMode(int index,int mode) {
+            layers.get(index).blendMode=Math.max(0,Math.min(5,mode));
+            invalidate();
+        }
+        private Xfermode createLayerXfermode(int mode) {
+            switch(mode) {
+                case 1: return new PorterDuffXfermode(PorterDuff.Mode.MULTIPLY);
+                case 2: return new PorterDuffXfermode(PorterDuff.Mode.SCREEN);
+                case 3: return new PorterDuffXfermode(PorterDuff.Mode.ADD);
+                case 4: return new PorterDuffXfermode(PorterDuff.Mode.DARKEN);
+                case 5: return new PorterDuffXfermode(PorterDuff.Mode.LIGHTEN);
+                default: return null;
+            }
+        }
         void setLayerOpacity(int index,int opacity) {
             layers.get(index).opacity=Math.max(0,Math.min(100,opacity));
             invalidate();
@@ -729,9 +767,11 @@ public class MainActivity extends Activity {
             c.drawColor(Color.WHITE);
             for (Layer layer:layers) if (layer.visible && layer.opacity>0) {
                 layerPaint.setAlpha(layer.opacity*255/100);
+                layerPaint.setXfermode(createLayerXfermode(layer.blendMode));
                 c.drawBitmap(layer.bitmap,0,0,layerPaint);
             }
             layerPaint.setAlpha(255);
+            layerPaint.setXfermode(null);
             return merged;
         }
 
@@ -749,9 +789,11 @@ public class MainActivity extends Activity {
             canvas.drawRect(0,0,1600,2200,background);
             for (Layer layer:layers) if (layer.visible && layer.opacity>0) {
                 layerPaint.setAlpha(layer.opacity*255/100);
+                layerPaint.setXfermode(createLayerXfermode(layer.blendMode));
                 canvas.drawBitmap(layer.bitmap,0,0,layerPaint);
             }
             layerPaint.setAlpha(255);
+            layerPaint.setXfermode(null);
             if (strokeInProgress && !strokeEraser) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                 drawSymmetricPath(canvas,currentPath,previewPaint);
