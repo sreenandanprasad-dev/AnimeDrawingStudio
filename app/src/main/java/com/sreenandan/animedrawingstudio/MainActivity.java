@@ -532,6 +532,17 @@ public class MainActivity extends Activity {
                     alphaLock.setOnCheckedChangeListener((button,checked) ->
                             drawingView.setLayerAlphaLocked(index,checked));
                     row.addView(alphaLock);
+                    TextView clipLabel = new TextView(MainActivity.this);
+                    clipLabel.setText("Clip");
+                    clipLabel.setTextSize(10);
+                    clipLabel.setTextColor(Color.BLACK);
+                    row.addView(clipLabel);
+                    CheckBox clip = new CheckBox(MainActivity.this);
+                    clip.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.BLACK));
+                    clip.setChecked(drawingView.isLayerClipped(index));
+                    clip.setEnabled(index>0);
+                    clip.setOnCheckedChangeListener((button,checked) -> drawingView.setLayerClipped(index,checked));
+                    row.addView(clip);
                     rows.addView(row);
                     LinearLayout opacityRow = new LinearLayout(MainActivity.this);
                     opacityRow.setGravity(Gravity.CENTER_VERTICAL);
@@ -647,6 +658,7 @@ public class MainActivity extends Activity {
             int opacity=100;
             int blendMode=0;
             boolean alphaLocked=false;
+            boolean clipToBelow=false;
             Layer(String label) {
                 name=label;
                 bitmap=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
@@ -761,8 +773,11 @@ public class MainActivity extends Activity {
             sampleCanvas.drawColor(Color.WHITE);
             Rect sourceRect=new Rect(x,y,x+1,y+1);
             Rect destRect=new Rect(0,0,1,1);
-            for (Layer layer:layers) {
-                if (layer.visible && layer.opacity>0) {
+            for (int i=0;i<layers.size();i++) {
+                Layer layer=layers.get(i);
+                boolean clippedOut=layer.clipToBelow && (i==0 || !layers.get(i-1).visible
+                        || layers.get(i-1).opacity<=0 || Color.alpha(layers.get(i-1).bitmap.getPixel(x,y))==0);
+                if (layer.visible && layer.opacity>0 && !clippedOut) {
                     configureLayerPaint(layer);
                     sampleCanvas.drawBitmap(layer.bitmap,sourceRect,destRect,layerPaint);
                 }
@@ -789,6 +804,12 @@ public class MainActivity extends Activity {
         int getLayerOpacity(int index) { return layers.get(index).opacity; }
         int getLayerBlendMode(int index) { return layers.get(index).blendMode; }
         boolean isLayerAlphaLocked(int index) { return layers.get(index).alphaLocked; }
+        boolean isLayerClipped(int index) { return layers.get(index).clipToBelow; }
+        void setLayerClipped(int index,boolean clipped) {
+            if (index==0) clipped=false;
+            layers.get(index).clipToBelow=clipped;
+            invalidate();
+        }
         void setLayerAlphaLocked(int index,boolean locked) {
             layers.get(index).alphaLocked=locked;
             invalidate();
@@ -829,6 +850,31 @@ public class MainActivity extends Activity {
             layerPaint.setAlpha(255);
             layerPaint.setXfermode(null);
             if (Build.VERSION.SDK_INT >= 29) layerPaint.setBlendMode(null);
+        }
+
+        // Clip the layer to the alpha of the layer immediately beneath it.
+        private void drawLayerStack(Canvas target) {
+            RectF bounds=new RectF(0,0,1600,2200);
+            Paint clipMask=new Paint(Paint.ANTI_ALIAS_FLAG);
+            clipMask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+            for(int i=0;i<layers.size();i++) {
+                Layer layer=layers.get(i);
+                if(!layer.visible || layer.opacity<=0) continue;
+                if(layer.clipToBelow && i>0) {
+                    Layer base=layers.get(i-1);
+                    if(!base.visible || base.opacity<=0) continue;
+                    configureLayerPaint(layer);
+                    int save=target.saveLayer(bounds,layerPaint);
+                    target.drawBitmap(layer.bitmap,0,0,null);
+                    target.drawBitmap(base.bitmap,0,0,clipMask);
+                    target.restoreToCount(save);
+                    resetLayerPaint();
+                } else {
+                    configureLayerPaint(layer);
+                    target.drawBitmap(layer.bitmap,0,0,layerPaint);
+                    resetLayerPaint();
+                }
+            }
         }
         void setLayerOpacity(int index,int opacity) {
             layers.get(index).opacity=Math.max(0,Math.min(100,opacity));
@@ -1018,11 +1064,7 @@ public class MainActivity extends Activity {
             Bitmap merged=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
             Canvas c=new Canvas(merged);
             c.drawColor(Color.WHITE);
-            for (Layer layer:layers) if (layer.visible && layer.opacity>0) {
-                configureLayerPaint(layer);
-                c.drawBitmap(layer.bitmap,0,0,layerPaint);
-            }
-            resetLayerPaint();
+            drawLayerStack(c);
             return merged;
         }
 
@@ -1038,11 +1080,7 @@ public class MainActivity extends Activity {
             Paint background=new Paint();
             background.setColor(Color.WHITE);
             canvas.drawRect(0,0,1600,2200,background);
-            for (Layer layer:layers) if (layer.visible && layer.opacity>0) {
-                configureLayerPaint(layer);
-                canvas.drawBitmap(layer.bitmap,0,0,layerPaint);
-            }
-            resetLayerPaint();
+            drawLayerStack(canvas);
             if (strokeInProgress && !strokeEraser) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                 drawSymmetricPath(canvas,currentPath,previewPaint);
