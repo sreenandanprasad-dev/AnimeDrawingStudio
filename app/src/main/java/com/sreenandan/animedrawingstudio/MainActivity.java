@@ -1189,10 +1189,12 @@ public class MainActivity extends Activity {
                 marquee.setStrokeWidth(3f/(scale*zoom));
                 marquee.setColor(Color.WHITE);
                 marquee.setPathEffect(new DashPathEffect(new float[]{10f/(scale*zoom),6f/(scale*zoom)},0));
-                float left=Math.min(selectionStartX,selectionEndX);
-                float top=Math.min(selectionStartY,selectionEndY);
-                float right=Math.max(selectionStartX,selectionEndX);
-                float bottom=Math.max(selectionStartY,selectionEndY);
+                float moveX=movingSelection ? selectionMoveDX : 0f;
+                float moveY=movingSelection ? selectionMoveDY : 0f;
+                float left=Math.min(selectionStartX,selectionEndX)+moveX;
+                float top=Math.min(selectionStartY,selectionEndY)+moveY;
+                float right=Math.max(selectionStartX,selectionEndX)+moveX;
+                float bottom=Math.max(selectionStartY,selectionEndY)+moveY;
                 canvas.drawRect(left,top,right,bottom,marquee);
                 marquee.setColor(Color.BLACK);
                 marquee.setPathEffect(new DashPathEffect(new float[]{10f/(scale*zoom),6f/(scale*zoom)},10f/(scale*zoom)));
