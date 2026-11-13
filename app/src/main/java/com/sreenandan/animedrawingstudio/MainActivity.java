@@ -692,6 +692,8 @@ public class MainActivity extends Activity {
         private float zoom=1f, panX=0f, panY=0f, rotation=0f;
         private float lastMidX, lastMidY, lastAngle;
         private boolean multiTouch=false, drawingGesture=false;
+        private boolean pendingBucketFill=false;
+        private int pendingFillX=0, pendingFillY=0;
         private final ScaleGestureDetector scaleDetector;
 
         DrawingView() {
@@ -1172,7 +1174,9 @@ public class MainActivity extends Activity {
                         return true;
                     }
                     if (bucketTool) {
-                        if (x>=0 && y>=0 && x<1600 && y<2200) fillAt(Math.round(x),Math.round(y));
+                        pendingBucketFill=(x>=0 && y>=0 && x<1600 && y<2200);
+                        pendingFillX=Math.max(0,Math.min(1599,Math.round(x)));
+                        pendingFillY=Math.max(0,Math.min(2199,Math.round(y)));
                         return true;
                     }
                     drawingGesture=(x>=0 && y>=0 && x<=1600 && y<=2200);
@@ -1223,6 +1227,8 @@ public class MainActivity extends Activity {
 
                 case MotionEvent.ACTION_POINTER_DOWN:
                     multiTouch=true;
+                    // A second finger means this is a zoom/rotate gesture, not a fill tap.
+                    pendingBucketFill=false;
                     if (event.getPointerCount()>=2) {
                         lastMidX=(event.getX(0)+event.getX(1))/2f;
                         lastMidY=(event.getY(0)+event.getY(1))/2f;
@@ -1341,6 +1347,12 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_UP:
+                    if (pendingBucketFill) {
+                        if (!multiTouch) fillAt(pendingFillX,pendingFillY);
+                        pendingBucketFill=false;
+                        multiTouch=false;
+                        return true;
+                    }
                     if (multiTouch || !drawingGesture) { multiTouch=false; drawingGesture=false; strokeInProgress=false; shapeInProgress=false; currentPath.reset(); invalidate(); return true; }
                     drawingGesture=false;
                     if (shapeInProgress) {
@@ -1396,6 +1408,7 @@ public class MainActivity extends Activity {
 
                 case MotionEvent.ACTION_CANCEL:
                     multiTouch=false;
+                    pendingBucketFill=false;
                     drawingGesture=false;
                     strokeInProgress=false;
                     shapeInProgress=false;
