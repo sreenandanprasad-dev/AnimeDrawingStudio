@@ -293,12 +293,12 @@ public class MainActivity extends Activity {
 
     private void styleToolButton(Button button, boolean active) {
         if (button == null) return;
-        button.setTextColor(active ? Color.WHITE : Color.BLACK);
+        button.setTextColor(active ? Color.WHITE : Color.rgb(218,223,233));
         GradientDrawable background = new GradientDrawable();
-        background.setColor(active ? Color.rgb(0,0,128) : Color.rgb(212,208,200));
-        background.setCornerRadius(2);
-        background.setStroke(active ? 3 : 1,
-                active ? Color.rgb(255,255,120) : Color.rgb(90,90,90));
+        background.setColor(active ? Color.rgb(43,67,105) : Color.rgb(43,46,53));
+        background.setCornerRadius(5);
+        background.setStroke(active ? 2 : 1,
+                active ? Color.rgb(104,166,255) : Color.rgb(76,82,94));
         button.setBackground(background);
     }
 
