@@ -56,6 +56,7 @@ public class MainActivity extends Activity {
         addButton(toolbar,"▤",() -> showLayers());
         addButton(toolbar,"Save",() -> saveImage());
         addButton(toolbar,"⌕",() -> drawingView.resetView());
+        addButton(toolbar,"Sel X",() -> drawingView.clearSelection());
         symmetryButton = addButton(toolbar,"Sym OFF",() -> {
             boolean enabled = !drawingView.isSymmetryEnabled();
             drawingView.setSymmetryEnabled(enabled);
@@ -905,6 +906,12 @@ public class MainActivity extends Activity {
             shapeInProgress=false;
             strokeInProgress=false;
             if(!enabled) finishSelectionMove();
+            invalidate();
+        }
+        void clearSelection() {
+            if(movingSelection) finishSelectionMove();
+            selectionInProgress=false;
+            hasSelection=false;
             invalidate();
         }
         private boolean pointInsideSelection(float px,float py) {
