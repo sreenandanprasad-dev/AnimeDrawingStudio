@@ -152,7 +152,7 @@ public class MainActivity extends Activity {
         activeToolLabel.setTextSize(10);
         activeToolLabel.setGravity(Gravity.CENTER);
         activeToolLabel.setBackgroundColor(Color.rgb(38,43,54));
-        toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(0,34,1));
+        toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,30));
         tools.addView(toolRow);
 
         LinearLayout sizeOpacityRow = new LinearLayout(this);
