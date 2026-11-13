@@ -940,6 +940,26 @@ public class MainActivity extends Activity {
             }
         }
 
+        // Render the in-progress stroke into an isolated layer and apply the same
+        // alpha masks used by Alpha Lock and Clip to Below before showing it.
+        private void drawMaskedPreview(Canvas target,int layerIndex,Runnable drawContent) {
+            Layer active=layers.get(layerIndex);
+            boolean useAlphaLock=active.alphaLocked;
+            boolean useClip=active.clipToBelow && layerIndex>0;
+            if(!useAlphaLock && !useClip) {
+                drawContent.run();
+                return;
+            }
+            int save=target.saveLayer(0,0,1600,2200,null);
+            drawContent.run();
+            Paint mask=new Paint(Paint.ANTI_ALIAS_FLAG);
+            mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
+            if(useAlphaLock) target.drawBitmap(active.bitmap,0,0,mask);
+            if(useClip) target.drawBitmap(layers.get(layerIndex-1).bitmap,0,0,mask);
+            mask.setXfermode(null);
+            target.restoreToCount(save);
+        }
+
         void clearHistory() {
             for (Snapshot s:undo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
             for (Snapshot s:redo) if (!s.bitmap.isRecycled()) s.bitmap.recycle();
@@ -1083,14 +1103,16 @@ public class MainActivity extends Activity {
             drawLayerStack(canvas);
             if (strokeInProgress && !strokeEraser) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
-                drawSymmetricPath(canvas,currentPath,previewPaint);
+                drawMaskedPreview(canvas,activeLayer,() ->
+                        drawSymmetricPath(canvas,currentPath,previewPaint));
                 previewPaint.setShader(null);
                 previewPaint.setColorFilter(null);
                 previewPaint.setMaskFilter(null);
             }
             if (shapeInProgress) {
                 configureStrokePaint(previewPaint,strokePreset,strokeColor,brushOpacity,strokeWidth);
-                drawSymmetricShape(canvas,previewPaint,shapeTool,shapeStartX,shapeStartY,shapeEndX,shapeEndY);
+                drawMaskedPreview(canvas,activeLayer,() ->
+                        drawSymmetricShape(canvas,previewPaint,shapeTool,shapeStartX,shapeStartY,shapeEndX,shapeEndY));
                 previewPaint.setShader(null);
                 previewPaint.setColorFilter(null);
                 previewPaint.setMaskFilter(null);
