@@ -293,13 +293,93 @@ public class MainActivity extends Activity {
 
     private void styleToolButton(Button button, boolean active) {
         if (button == null) return;
-        button.setTextColor(active ? Color.WHITE : Color.rgb(218,223,233));
+        String type = button == brushToolButton ? "brush"
+                : button == eraserToolButton ? "eraser"
+                : button == fillToolButton ? "fill"
+                : button == lineToolButton ? "line"
+                : button == rectToolButton ? "rect"
+                : button == ellipseToolButton ? "ellipse"
+                : button == eyedropperToolButton ? "picker" : "select";
+        button.setText("");
+        button.setContentDescription(type + " tool");
+        PixelToolIcon icon = new PixelToolIcon(type);
+        icon.setBounds(0,0,30,30);
+        button.setCompoundDrawables(null,icon,null,null);
+        button.setCompoundDrawablePadding(0);
+        button.setGravity(Gravity.CENTER);
+        button.setPadding(2,2,2,2);
         GradientDrawable background = new GradientDrawable();
         background.setColor(active ? Color.rgb(43,67,105) : Color.rgb(43,46,53));
         background.setCornerRadius(5);
         background.setStroke(active ? 2 : 1,
                 active ? Color.rgb(104,166,255) : Color.rgb(76,82,94));
         button.setBackground(background);
+    }
+
+    // Small, deliberately pixelated Windows-era tool artwork.
+    private class PixelToolIcon extends android.graphics.drawable.Drawable {
+        private final String type;
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        PixelToolIcon(String type) { this.type=type; }
+        private void block(Canvas c,int x,int y,int w,int h,int color) {
+            p.setColor(color); p.setStyle(Paint.Style.FILL);
+            c.drawRect(x,y,x+w,y+h,p);
+        }
+        @Override public void draw(Canvas canvas) {
+            Rect b=getBounds();
+            int save=canvas.save();
+            canvas.translate(b.left,b.top);
+            canvas.scale(b.width()/24f,b.height()/24f);
+            int dark=Color.rgb(25,27,32), white=Color.rgb(240,240,230);
+            int blue=Color.rgb(35,95,225), yellow=Color.rgb(255,205,45);
+            int green=Color.rgb(55,180,95), pink=Color.rgb(245,115,155);
+            if ("brush".equals(type)) {
+                block(canvas,4,15,4,4,dark); block(canvas,7,11,4,4,dark);
+                block(canvas,10,7,4,4,dark); block(canvas,13,4,4,4,dark);
+                block(canvas,5,15,2,3,yellow); block(canvas,8,11,2,3,green);
+                block(canvas,11,7,2,3,blue); block(canvas,14,4,3,3,blue);
+                block(canvas,3,19,3,2,white);
+            } else if ("eraser".equals(type)) {
+                block(canvas,4,9,15,9,dark); block(canvas,6,7,12,9,pink);
+                block(canvas,6,15,12,3,white); block(canvas,4,17,15,2,dark);
+            } else if ("fill".equals(type)) {
+                block(canvas,5,5,12,3,dark); block(canvas,4,8,14,10,dark);
+                block(canvas,6,9,10,7,blue); block(canvas,7,3,8,3,white);
+                block(canvas,14,15,6,3,green); block(canvas,17,18,3,3,blue);
+            } else if ("line".equals(type)) {
+                for(int i=0;i<6;i++) block(canvas,4+i*2,15-i*2,3,3,dark);
+                for(int i=0;i<5;i++) block(canvas,5+i*2,15-i*2,2,2,white);
+            } else if ("rect".equals(type)) {
+                block(canvas,4,5,16,2,dark); block(canvas,4,17,16,2,dark);
+                block(canvas,4,7,2,10,dark); block(canvas,18,7,2,10,dark);
+                block(canvas,7,8,10,8,blue);
+            } else if ("ellipse".equals(type)) {
+                block(canvas,8,4,8,2,dark); block(canvas,5,6,3,2,dark);
+                block(canvas,16,6,3,2,dark); block(canvas,3,8,2,8,dark);
+                block(canvas,19,8,2,8,dark); block(canvas,5,16,3,2,dark);
+                block(canvas,16,16,3,2,dark); block(canvas,8,18,8,2,dark);
+                block(canvas,7,8,10,8,blue);
+            } else if ("picker".equals(type)) {
+                block(canvas,5,15,5,5,dark); block(canvas,8,11,5,5,dark);
+                block(canvas,11,7,5,5,dark); block(canvas,14,4,5,5,dark);
+                block(canvas,6,15,3,3,green); block(canvas,9,11,3,3,blue);
+                block(canvas,12,7,3,3,yellow); block(canvas,15,4,3,3,white);
+            } else {
+                block(canvas,4,4,3,2,white); block(canvas,9,4,3,2,white);
+                block(canvas,14,4,3,2,white); block(canvas,18,4,2,3,white);
+                block(canvas,4,9,2,3,white); block(canvas,18,9,2,3,white);
+                block(canvas,4,14,2,3,white); block(canvas,18,14,2,3,white);
+                block(canvas,4,18,3,2,white); block(canvas,9,18,3,2,white);
+                block(canvas,14,18,3,2,white); block(canvas,18,18,2,2,white);
+                block(canvas,8,8,8,8,blue);
+            }
+            canvas.restoreToCount(save);
+        }
+        @Override public void setAlpha(int alpha) { p.setAlpha(alpha); }
+        @Override public void setColorFilter(android.graphics.ColorFilter filter) { p.setColorFilter(filter); }
+        @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+        @Override public int getIntrinsicWidth() { return 30; }
+        @Override public int getIntrinsicHeight() { return 30; }
     }
 
     private Button addButton(LinearLayout parent, String label, Runnable action) {
