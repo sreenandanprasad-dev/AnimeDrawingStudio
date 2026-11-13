@@ -103,41 +103,30 @@ public class MainActivity extends Activity {
         brushToolButton = addButton(toolRow, "✎", () -> {
             drawingView.setEyedropper(false);
             drawingView.setEraser(false);
-            drawingView.setBucketTool(false);
-            drawingView.setShapeTool(0);
             setActiveTool("BRUSH");
         });
         eraserToolButton = addButton(toolRow, "▰", () -> {
             drawingView.setEyedropper(false);
             drawingView.setEraser(true);
-            drawingView.setBucketTool(false);
-            drawingView.setShapeTool(0);
             setActiveTool("ERASER");
         });
         fillToolButton = addButton(toolRow, "▧", () -> {
             drawingView.setEyedropper(false);
             drawingView.setBucketTool(true);
-            drawingView.setShapeTool(0);
             setActiveTool("FILL");
         });
         lineToolButton = addButton(toolRow, "╱", () -> {
             drawingView.setEyedropper(false);
-            drawingView.setEraser(false);
-            drawingView.setBucketTool(false);
             drawingView.setShapeTool(1);
             setActiveTool("LINE");
         });
         rectToolButton = addButton(toolRow, "□", () -> {
             drawingView.setEyedropper(false);
-            drawingView.setEraser(false);
-            drawingView.setBucketTool(false);
             drawingView.setShapeTool(2);
             setActiveTool("RECT");
         });
         ellipseToolButton = addButton(toolRow, "○", () -> {
             drawingView.setEyedropper(false);
-            drawingView.setEraser(false);
-            drawingView.setBucketTool(false);
             drawingView.setShapeTool(3);
             setActiveTool("ELLIPSE");
         });
