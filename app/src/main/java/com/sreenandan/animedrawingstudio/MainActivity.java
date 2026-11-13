@@ -60,6 +60,11 @@ public class MainActivity extends Activity {
         addButton(toolbar,"Dup",() -> drawingView.duplicateSelection());
         addButton(toolbar,"Flip H",() -> drawingView.flipSelection(true));
         addButton(toolbar,"Flip V",() -> drawingView.flipSelection(false));
+        Button gridButton = addButton(toolbar,"Grid OFF",() -> {
+            boolean enabled = !drawingView.isGridEnabled();
+            drawingView.setGridEnabled(enabled);
+            gridButtonLabelRefresh(toolbar,enabled);
+        });
         symmetryButton = addButton(toolbar,"Sym OFF",() -> {
             boolean enabled = !drawingView.isSymmetryEnabled();
             drawingView.setSymmetryEnabled(enabled);
@@ -262,6 +267,16 @@ public class MainActivity extends Activity {
         handButton.setTextSize(10);
         setActiveTool("BRUSH");
         setContentView(root);
+    }
+
+    private void gridButtonLabelRefresh(LinearLayout toolbar, boolean enabled) {
+        for (int i=0;i<toolbar.getChildCount();i++) {
+            View child=toolbar.getChildAt(i);
+            if (child instanceof Button && (((Button)child).getText().toString().startsWith("Grid"))) {
+                ((Button)child).setText(enabled ? "Grid ON" : "Grid OFF");
+                return;
+            }
+        }
     }
 
     private void handButtonLabelRefresh(LinearLayout toolbar, boolean rightHanded) {
@@ -825,6 +840,7 @@ public class MainActivity extends Activity {
         private float selectionMoveBaseDX,selectionMoveBaseDY;
         private int selectionBitmapLeft,selectionBitmapTop;
         private boolean symmetryEnabled=false;
+        private boolean gridEnabled=false;
         private int shapeTool=0;
         private boolean shapeInProgress=false;
         private float shapeStartX,shapeStartY,shapeEndX,shapeEndY;
@@ -1035,6 +1051,9 @@ public class MainActivity extends Activity {
             zoom=1f; panX=0f; panY=0f; rotation=0f;
             invalidate();
         }
+
+        boolean isGridEnabled() { return gridEnabled; }
+        void setGridEnabled(boolean enabled) { gridEnabled=enabled; invalidate(); }
 
         ArrayList<String> getLayerNames() {
             ArrayList<String> result=new ArrayList<>();
@@ -1414,6 +1433,13 @@ public class MainActivity extends Activity {
                 marquee.setColor(Color.BLACK);
                 marquee.setPathEffect(new DashPathEffect(new float[]{10f/(scale*zoom),6f/(scale*zoom)},10f/(scale*zoom)));
                 canvas.drawRect(left,top,right,bottom,marquee);
+            }
+            if (gridEnabled) {
+                Paint gridPaint = new Paint();
+                gridPaint.setColor(Color.argb(42,70,110,150));
+                gridPaint.setStrokeWidth(1f/(scale*zoom));
+                for (int gx=100;gx<1600;gx+=100) canvas.drawLine(gx,0,gx,2200,gridPaint);
+                for (int gy=100;gy<2200;gy+=100) canvas.drawLine(0,gy,1600,gy,gridPaint);
             }
             if (symmetryEnabled) {
                 Paint axis = new Paint(Paint.ANTI_ALIAS_FLAG);
