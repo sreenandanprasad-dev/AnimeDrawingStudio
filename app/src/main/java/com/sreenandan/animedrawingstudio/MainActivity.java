@@ -723,6 +723,21 @@ public class MainActivity extends Activity {
                                     android.transition.TransitionManager.beginDelayedTransition(rows);
                                     rows.removeView(moving);
                                     rows.addView(moving,insertPosition);
+
+                                    // Reorder the real drawing stack at the same time as the
+                                    // cards slide, so the canvas immediately reflects the move.
+                                    Object modelTag=moving.getTag();
+                                    int count=names.size();
+                                    if(modelTag instanceof Integer) {
+                                        int fromModel=(Integer)modelTag;
+                                        int toModel=count-1-insertPosition;
+                                        if(fromModel!=toModel) drawingView.moveLayer(fromModel,toModel);
+                                    }
+                                    // Keep every card's tag synchronized with its new model index.
+                                    for(int cardPosition=0;cardPosition<rows.getChildCount();cardPosition++) {
+                                        View card=rows.getChildAt(cardPosition);
+                                        card.setTag(count-1-cardPosition);
+                                    }
                                 }
                                 return true;
                             }
