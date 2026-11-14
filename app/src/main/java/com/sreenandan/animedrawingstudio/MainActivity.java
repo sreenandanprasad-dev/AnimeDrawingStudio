@@ -215,6 +215,7 @@ public class MainActivity extends Activity {
     // Smooth, recognisable vector-style tool icons (not pixel-art glyphs).
     private class StudioToolIcon extends android.graphics.drawable.Drawable {
         private final String type;
+        private final boolean active;
         private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
         StudioToolIcon(String type,boolean active) { this.type=type; this.active=active; }
         private void line(Canvas c,float x1,float y1,float x2,float y2) {
