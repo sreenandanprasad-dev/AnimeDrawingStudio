@@ -285,7 +285,7 @@ public class MainActivity extends Activity {
                 : button == eyedropperToolButton ? "picker" : "select";
         button.setText("");
         button.setContentDescription(type + " tool");
-        PixelToolIcon icon = new PixelToolIcon(type);
+        StudioToolIcon icon = new StudioToolIcon(type);
         icon.setBounds(0,0,30,30);
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
@@ -300,86 +300,61 @@ public class MainActivity extends Activity {
     }
 
     // Small, deliberately pixelated Windows-era tool artwork.
-    private class PixelToolIcon extends android.graphics.drawable.Drawable {
+    // Smooth, recognisable vector-style tool icons (not pixel-art glyphs).
+    private class StudioToolIcon extends android.graphics.drawable.Drawable {
         private final String type;
-        private final Paint p = new Paint();
-        PixelToolIcon(String type) { this.type=type; p.setAntiAlias(false); }
-        private void px(Canvas c,int x,int y,int w,int h,int color) {
-            p.setShader(null); p.setColor(color); p.setStyle(Paint.Style.FILL);
-            c.drawRect(x,y,x+w,y+h,p);
+        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
+        StudioToolIcon(String type) { this.type=type; }
+        private void line(Canvas c,float x1,float y1,float x2,float y2) {
+            c.drawLine(x1,y1,x2,y2,p);
         }
-        private void bevelBox(Canvas c,int x,int y,int w,int h) {
-            px(c,x,y,w,h,Color.rgb(45,48,54));
-            px(c,x+1,y+1,w-2,h-2,Color.rgb(245,245,238));
-            px(c,x+2,y+2,w-4,h-4,Color.rgb(190,193,190));
-        }
-        private void pencil(Canvas c,int x,int y,int length,int color) {
-            // Diagonal shaft with dark outline, coloured lacquer, metal ferrule and graphite tip.
-            for(int i=0;i<length;i++) {
-                px(c,x+i,y+length-i,5,5,Color.rgb(30,30,30));
-                px(c,x+i+1,y+length-i+1,3,3,color);
-                px(c,x+i+1,y+length-i+1,1,2,Color.rgb(255,255,255));
-            }
-            px(c,x+length,y,5,5,Color.rgb(205,170,105));
-            px(c,x+length+2,y+2,3,3,Color.rgb(35,35,35));
+        private void path(Canvas c,float... xy) {
+            Path shape=new Path();
+            shape.moveTo(xy[0],xy[1]);
+            for(int i=2;i<xy.length;i+=2) shape.lineTo(xy[i],xy[i+1]);
+            c.drawPath(shape,p);
         }
         @Override public void draw(Canvas canvas) {
             Rect b=getBounds();
             int save=canvas.save();
             canvas.translate(b.left,b.top);
             canvas.scale(b.width()/32f,b.height()/32f);
-            int ink=Color.rgb(35,35,35), hi=Color.rgb(255,255,255);
-            int blue=Color.rgb(25,82,205), mid=Color.rgb(65,125,245);
-            int grey=Color.rgb(170,174,174);
-            if ("brush".equals(type)) {
-                pencil(canvas,5,4,17,blue);
-                px(canvas,3,23,5,3,ink); px(canvas,4,22,4,2,grey);
-                px(canvas,3,26,3,2,ink); px(canvas,5,25,2,2,Color.rgb(245,205,75));
-                px(canvas,22,3,4,3,hi);
-            } else if ("eraser".equals(type)) {
-                px(canvas,5,11,22,14,ink);
-                px(canvas,7,8,18,14,Color.rgb(230,105,125));
-                px(canvas,8,9,15,10,Color.rgb(255,155,170));
-                px(canvas,7,18,17,4,Color.rgb(205,205,200));
-                px(canvas,5,22,22,4,ink);
-                px(canvas,8,22,16,2,hi);
-            } else if ("fill".equals(type)) {
-                // Classic tipped paint bucket with a little paint drop.
-                px(canvas,7,6,15,3,ink); px(canvas,5,9,19,3,ink);
-                px(canvas,7,12,15,10,ink); px(canvas,9,14,11,6,blue);
-                px(canvas,8,12,13,2,hi); px(canvas,20,16,5,3,Color.rgb(255,210,35));
-                px(canvas,23,19,3,4,Color.rgb(255,210,35));
-                px(canvas,18,24,6,3,ink);
-            } else if ("line".equals(type)) {
-                for(int i=0;i<19;i++) {
-                    px(canvas,5+i,23-i,4,4,ink);
-                    px(canvas,6+i,23-i,2,2,hi);
-                }
-            } else if ("rect".equals(type)) {
-                px(canvas,4,5,24,3,ink); px(canvas,4,24,24,3,ink);
-                px(canvas,4,8,3,16,ink); px(canvas,25,8,3,16,ink);
-                px(canvas,7,8,18,2,hi); px(canvas,7,10,16,12,blue);
-                px(canvas,7,22,18,2,Color.rgb(80,80,80));
-            } else if ("ellipse".equals(type)) {
-                px(canvas,11,4,10,3,ink); px(canvas,7,7,4,3,ink);
-                px(canvas,21,7,4,3,ink); px(canvas,4,10,3,12,ink);
-                px(canvas,25,10,3,12,ink); px(canvas,7,22,4,3,ink);
-                px(canvas,21,22,4,3,ink); px(canvas,11,25,10,3,ink);
-                px(canvas,11,8,10,2,hi); px(canvas,7,11,18,11,blue);
-                px(canvas,11,22,10,2,Color.rgb(80,80,80));
-            } else if ("picker".equals(type)) {
-                pencil(canvas,5,5,16,Color.rgb(30,30,30));
-                px(canvas,4,23,9,4,ink); px(canvas,5,24,7,2,Color.rgb(255,220,45));
-                px(canvas,21,7,7,7,ink); px(canvas,22,8,5,5,Color.rgb(70,190,100));
-                px(canvas,23,9,3,3,blue);
+            p.setShader(null); p.setColor(Color.rgb(67,75,89));
+            p.setStrokeWidth(2.35f); p.setStrokeCap(Paint.Cap.ROUND);
+            p.setStrokeJoin(Paint.Join.ROUND); p.setStyle(Paint.Style.STROKE);
+            if("brush".equals(type)) {
+                path(canvas,7,25,23,9);
+                line(canvas,6,26,10,25);
+                path(canvas,20,7,23,5,26,8,24,11);
+                p.setStyle(Paint.Style.FILL); canvas.drawCircle(6,26,2,p);
+            } else if("eraser".equals(type)) {
+                path(canvas,8,21,18,7,25,12,15,26,8,21);
+                line(canvas,12,24,19,15);
+                p.setStyle(Paint.Style.FILL); p.setColor(Color.rgb(145,166,205));
+                path(canvas,8,21,14,13,20,19,15,26,8,21);
+            } else if("fill".equals(type)) {
+                path(canvas,7,12,22,12,20,25,10,25,7,12);
+                line(canvas,5,9,24,9);
+                path(canvas,18,6,25,6,25,10);
+                p.setStyle(Paint.Style.FILL); canvas.drawCircle(25,20,2.2f,p);
+            } else if("line".equals(type)) {
+                line(canvas,6,25,26,7);
+                p.setStyle(Paint.Style.FILL); canvas.drawCircle(6,25,2.2f,p); canvas.drawCircle(26,7,2.2f,p);
+            } else if("rect".equals(type)) {
+                canvas.drawRect(6,7,26,25,p);
+            } else if("ellipse".equals(type)) {
+                canvas.drawOval(5,8,27,24,p);
+            } else if("picker".equals(type)) {
+                path(canvas,7,25,20,12,24,16,11,28,7,25);
+                line(canvas,19,13,23,9);
+                canvas.drawCircle(25,7,2.5f,p);
             } else {
-                // Marching-ants marquee with classic dotted selection corners.
-                for(int x=5;x<27;x+=4){px(canvas,x,5,2,2,ink);px(canvas,x+2,5,2,2,hi);
-                    px(canvas,x,25,2,2,hi);px(canvas,x+2,25,2,2,ink);}
-                for(int y=9;y<24;y+=4){px(canvas,5,y,2,2,hi);px(canvas,5,y+2,2,2,ink);
-                    px(canvas,25,y,2,2,ink);px(canvas,25,y+2,2,2,hi);}
-                px(canvas,11,11,10,10,Color.rgb(95,145,225));
-                px(canvas,13,13,6,6,Color.rgb(180,205,245));
+                p.setPathEffect(new DashPathEffect(new float[]{2.5f,2.5f},0));
+                canvas.drawRect(6,6,26,26,p);
+                p.setPathEffect(null);
+                p.setStyle(Paint.Style.FILL);
+                canvas.drawCircle(6,6,2,p); canvas.drawCircle(26,6,2,p);
+                canvas.drawCircle(6,26,2,p); canvas.drawCircle(26,26,2,p);
             }
             canvas.restoreToCount(save);
         }
@@ -1841,6 +1816,10 @@ public class MainActivity extends Activity {
                         Toast.makeText(MainActivity.this,"Selected layer is hidden",Toast.LENGTH_SHORT).show();
                         return true;
                     }
+                    if (eraser && layers.get(activeLayer).alphaLocked) {
+                        Toast.makeText(MainActivity.this,"Turn off Alpha Lock before erasing",Toast.LENGTH_SHORT).show();
+                        return true;
+                    }
                     saveUndo();
                     lastX=x; lastY=y;
                     lastTouchX=event.getX(); lastTouchY=event.getY();
@@ -2078,12 +2057,18 @@ public class MainActivity extends Activity {
                             Toast.makeText(MainActivity.this,"Turn off Alpha Lock before erasing",Toast.LENGTH_SHORT).show();
                             paint.setXfermode(null);
                         } else if(strokeEraser) {
+                            paint.setStyle(Paint.Style.STROKE);
+                            paint.setStrokeCap(Paint.Cap.ROUND);
+                            paint.setStrokeJoin(Paint.Join.ROUND);
+                            paint.setStrokeWidth(strokeWidth);
                             paint.setColor(Color.TRANSPARENT);
                             paint.setAlpha(255);
                             paint.setShader(null);
                             paint.setColorFilter(null);
                             paint.setMaskFilter(null);
-                            paint.setStrokeWidth(strokeWidth);
+                            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
+                            drawSymmetricPath(new Canvas(layers.get(activeLayer).bitmap),currentPath,paint);
+                            paint.setXfermode(null);
                         } else {
                             configureStrokePaint(paint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                         }
