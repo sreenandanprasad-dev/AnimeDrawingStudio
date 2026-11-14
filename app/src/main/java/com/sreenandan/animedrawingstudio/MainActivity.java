@@ -299,6 +299,15 @@ public class MainActivity extends Activity {
         }
     }
 
+    private GradientDrawable glassGradient(int topColor, int bottomColor, int borderColor, int radius) {
+        GradientDrawable background = new GradientDrawable(
+                GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{topColor, bottomColor});
+        background.setCornerRadius(radius);
+        background.setStroke(dp(1), borderColor);
+        return background;
+    }
+
     private GradientDrawable bevel(boolean pressed) {
         GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 pressed ? new int[]{Color.rgb(190,239,255),Color.rgb(83,180,222),Color.rgb(35,126,184)}
