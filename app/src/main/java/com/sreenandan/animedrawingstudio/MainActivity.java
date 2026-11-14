@@ -647,8 +647,25 @@ public class MainActivity extends Activity {
                 ArrayList<String> names = drawingView.getLayerNames();
                 for (int i=names.size()-1;i>=0;i--) {
                     final int index=i;
+                    LinearLayout layerCard = new LinearLayout(MainActivity.this);
+                    layerCard.setOrientation(LinearLayout.VERTICAL);
+                    layerCard.setTag(i);
+                    layerCard.setPadding(3,2,3,2);
                     LinearLayout row = new LinearLayout(MainActivity.this);
                     row.setGravity(Gravity.CENTER_VERTICAL);
+                    TextView dragHandle = new TextView(MainActivity.this);
+                    dragHandle.setText("☰");
+                    dragHandle.setTextSize(20);
+                    dragHandle.setTextColor(Color.DKGRAY);
+                    dragHandle.setGravity(Gravity.CENTER);
+                    dragHandle.setPadding(10,8,10,8);
+                    dragHandle.setContentDescription("Drag to reorder layer");
+                    row.addView(dragHandle,new LinearLayout.LayoutParams(42,48));
+                    dragHandle.setOnLongClickListener(v -> {
+                        android.content.ClipData data=android.content.ClipData.newPlainText("layer",String.valueOf(index));
+                        v.startDrag(data,new View.DragShadowBuilder(v),layerCard,0);
+                        return true;
+                    });
                     TextView select = new TextView(MainActivity.this);
                     select.setText((drawingView.getActiveLayer()==i ? "● " : "○ ") + names.get(i));
                     select.setTextSize(16);
@@ -686,7 +703,37 @@ public class MainActivity extends Activity {
                     clip.setEnabled(index>0);
                     clip.setOnCheckedChangeListener((button,checked) -> drawingView.setLayerClipped(index,checked));
                     row.addView(clip);
-                    rows.addView(row);
+                    layerCard.addView(row);
+                    layerCard.setOnDragListener((target,event) -> {
+                        switch(event.getAction()) {
+                            case android.view.DragEvent.ACTION_DRAG_STARTED:
+                                return event.getClipDescription()!=null;
+                            case android.view.DragEvent.ACTION_DRAG_ENTERED:
+                                layerCard.setBackgroundColor(Color.rgb(205,220,240));
+                                return true;
+                            case android.view.DragEvent.ACTION_DRAG_EXITED:
+                                layerCard.setBackgroundColor(Color.TRANSPARENT);
+                                return true;
+                            case android.view.DragEvent.ACTION_DROP:
+                                layerCard.setBackgroundColor(Color.TRANSPARENT);
+                                Object state=event.getLocalState();
+                                if(state instanceof View) {
+                                    Object fromTag=((View)state).getTag();
+                                    Object toTag=layerCard.getTag();
+                                    if(fromTag instanceof Integer && toTag instanceof Integer) {
+                                        int count=names.size();
+                                        int fromModel=count-1-(Integer)fromTag;
+                                        int toModel=count-1-(Integer)toTag;
+                                        if(drawingView.moveLayer(fromModel,toModel)) refresh[0].run();
+                                    }
+                                }
+                                return true;
+                            case android.view.DragEvent.ACTION_DRAG_ENDED:
+                                layerCard.setBackgroundColor(Color.TRANSPARENT);
+                                return true;
+                        }
+                        return true;
+                    });
                     LinearLayout opacityRow = new LinearLayout(MainActivity.this);
                     opacityRow.setGravity(Gravity.CENTER_VERTICAL);
                     TextView opacityText = new TextView(MainActivity.this);
@@ -706,7 +753,7 @@ public class MainActivity extends Activity {
                         public void onStopTrackingTouch(SeekBar bar) {}
                     });
                     opacityRow.addView(layerOpacity,new LinearLayout.LayoutParams(0,32,1));
-                    rows.addView(opacityRow);
+                    layerCard.addView(opacityRow);
                     LinearLayout blendRow = new LinearLayout(MainActivity.this);
                     blendRow.setGravity(Gravity.CENTER_VERTICAL);
                     TextView blendLabel = new TextView(MainActivity.this);
@@ -728,10 +775,11 @@ public class MainActivity extends Activity {
                         public void onNothingSelected(android.widget.AdapterView<?> parent) {}
                     });
                     blendRow.addView(blendSpinner,new LinearLayout.LayoutParams(0,40,1));
-                    rows.addView(blendRow);
+                    layerCard.addView(blendRow);
                     View line = new View(MainActivity.this);
                     line.setBackgroundColor(Color.DKGRAY);
-                    rows.addView(line,new LinearLayout.LayoutParams(-1,1));
+                    layerCard.addView(line,new LinearLayout.LayoutParams(-1,1));
+                    rows.addView(layerCard);
                 }
             }
         };
@@ -747,8 +795,6 @@ public class MainActivity extends Activity {
             else Toast.makeText(this,"Layer limit reached (6)",Toast.LENGTH_SHORT).show();
         });
         addButton(actions,"Rename",() -> renameLayer(refresh[0]));
-        addButton(actions,"↑ Up",() -> { if (drawingView.moveActiveLayer(1)) refresh[0].run(); });
-        addButton(actions,"↓ Down",() -> { if (drawingView.moveActiveLayer(-1)) refresh[0].run(); });
         addButton(actions,"Delete",() -> {
             if (!drawingView.deleteActiveLayer())
                 Toast.makeText(this,"Keep at least one layer",Toast.LENGTH_SHORT).show();
@@ -1322,14 +1368,12 @@ public class MainActivity extends Activity {
             if (index>=0 && index<layers.size()) activeLayer=index;
             invalidate();
         }
-        boolean moveActiveLayer(int direction) {
-            int target=activeLayer+direction;
-            if(target<0 || target>=layers.size()) return false;
-            Layer current=layers.get(activeLayer);
-            Layer adjacent=layers.get(target);
-            layers.set(activeLayer,adjacent);
-            layers.set(target,current);
-            activeLayer=target;
+        boolean moveLayer(int from,int to) {
+            if(from<0 || from>=layers.size() || to<0 || to>=layers.size() || from==to) return false;
+            Layer selected=layers.get(activeLayer);
+            Layer moving=layers.remove(from);
+            layers.add(to,moving);
+            activeLayer=layers.indexOf(selected);
             // Undo records refer to layer indexes; discard them after changing stack order.
             clearHistory();
             invalidate();
