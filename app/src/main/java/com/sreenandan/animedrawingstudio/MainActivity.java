@@ -81,7 +81,10 @@ public class MainActivity extends Activity {
 
         drawingView = new DrawingView();
         root.addView(titleBar,new LinearLayout.LayoutParams(-1,34));
-        root.addView(toolbar, new LinearLayout.LayoutParams(-1, 42));
+        android.widget.HorizontalScrollView toolbarScroll = new android.widget.HorizontalScrollView(this);
+        toolbarScroll.setHorizontalScrollBarEnabled(false);
+        toolbarScroll.addView(toolbar,new android.widget.HorizontalScrollView.LayoutParams(-2,-1));
+        root.addView(toolbarScroll, new LinearLayout.LayoutParams(-1, 42));
 
         LinearLayout tools = new LinearLayout(this);
         tools.setOrientation(LinearLayout.VERTICAL);
@@ -281,8 +284,8 @@ public class MainActivity extends Activity {
     private void gridButtonLabelRefresh(LinearLayout toolbar, boolean enabled) {
         for (int i=0;i<toolbar.getChildCount();i++) {
             View child=toolbar.getChildAt(i);
-            if (child instanceof Button && (((Button)child).getText().toString().startsWith("Grid"))) {
-                ((Button)child).setText(enabled ? "Grid ON" : "Grid OFF");
+            if (child instanceof Button && ("▦".equals(((Button)child).getText().toString()) || "▣".equals(((Button)child).getText().toString()))) {
+                ((Button)child).setText(enabled ? "▣" : "▦");
                 return;
             }
         }
