@@ -13,6 +13,11 @@ import android.provider.MediaStore;
 import android.view.*;
 import android.widget.*;
 import java.io.OutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
 public class MainActivity extends Activity {
@@ -29,6 +34,7 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        installCrashReporter();
         getWindow().setStatusBarColor(Color.rgb(15,16,19));
         getWindow().setNavigationBarColor(Color.rgb(15,16,19));
 
@@ -269,6 +275,7 @@ public class MainActivity extends Activity {
         handButton.setTextSize(10);
         setActiveTool("BRUSH");
         setContentView(root);
+        showPreviousCrashReport();
     }
 
     private void gridButtonLabelRefresh(LinearLayout toolbar, boolean enabled) {
@@ -766,6 +773,56 @@ public class MainActivity extends Activity {
                     if (!name.isEmpty()) drawingView.renameActiveLayer(name);
                     refresh.run();
                 }).show();
+    }
+
+
+    // Save the next fatal error so we can diagnose crashes on the user's phone.
+    private void installCrashReporter() {
+        final Thread.UncaughtExceptionHandler previous = Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler((thread, error) -> {
+            try {
+                StringWriter trace = new StringWriter();
+                error.printStackTrace(new PrintWriter(trace));
+                String report = "Anime Drawing Studio crash report\\n"
+                        + "Android: " + Build.VERSION.RELEASE + "\\n"
+                        + "Device: " + Build.MANUFACTURER + " " + Build.MODEL + "\\n"
+                        + "Thread: " + thread.getName() + "\\n\\n" + trace;
+                File file = new File(getFilesDir(), "last_crash.txt");
+                try (FileOutputStream output = new FileOutputStream(file, false)) {
+                    output.write(report.getBytes(StandardCharsets.UTF_8));
+                    output.flush();
+                    output.getFD().sync();
+                }
+            } catch (Throwable ignored) {
+                // Never prevent Android's normal crash handling.
+            }
+            if (previous != null) previous.uncaughtException(thread, error);
+        });
+    }
+
+    private void showPreviousCrashReport() {
+        File file = new File(getFilesDir(), "last_crash.txt");
+        if (!file.isFile()) return;
+        try {
+            byte[] bytes = new byte[(int)Math.min(file.length(), 60000)];
+            try (java.io.FileInputStream input = new java.io.FileInputStream(file)) {
+                int count = input.read(bytes);
+                String report = new String(bytes, 0, Math.max(0, count), StandardCharsets.UTF_8);
+                new AlertDialog.Builder(this)
+                        .setTitle("A previous crash was recorded")
+                        .setMessage("Please copy this report and send it to me. It contains technical error details, not your drawings.\\n\\n" + report)
+                        .setPositiveButton("Copy report", (dialog, which) -> {
+                            android.content.ClipboardManager clipboard =
+                                    (android.content.ClipboardManager)getSystemService(CLIPBOARD_SERVICE);
+                            clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Crash report", report));
+                            Toast.makeText(this, "Crash report copied", Toast.LENGTH_SHORT).show();
+                        })
+                        .setNegativeButton("Later", null)
+                        .show();
+            }
+        } catch (Exception ignored) {
+            Toast.makeText(this, "A crash was recorded but its report could not be opened.", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void saveImage() {
