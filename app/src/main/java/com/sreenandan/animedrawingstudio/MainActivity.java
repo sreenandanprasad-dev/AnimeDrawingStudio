@@ -27,7 +27,8 @@ public class MainActivity extends Activity {
     private int brushOpacity = 100;
     private int stabilizer = 0;
     private int brushPreset = 0;
-    private Button brushToolButton, handToolButton, eraserToolButton, fillToolButton;\n    private Button moveToolButton, lassoToolButton, magicToolButton, imageToolButton, layersToolButton, gridToolButton;
+    private Button brushToolButton, handToolButton, eraserToolButton, fillToolButton;
+    private Button moveToolButton, lassoToolButton, magicToolButton, imageToolButton, layersToolButton, gridToolButton;
     private Button lineToolButton, rectToolButton, ellipseToolButton, eyedropperToolButton, selectionToolButton;
     private TextView activeToolLabel;
     private Button symmetryButton;
