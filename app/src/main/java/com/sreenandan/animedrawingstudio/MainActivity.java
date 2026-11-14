@@ -27,7 +27,7 @@ public class MainActivity extends Activity {
     private int brushOpacity = 100;
     private int stabilizer = 0;
     private int brushPreset = 0;
-    private Button brushToolButton, eraserToolButton, fillToolButton;
+    private Button brushToolButton, handToolButton, eraserToolButton, fillToolButton;\n    private Button moveToolButton, lassoToolButton, magicToolButton, imageToolButton, layersToolButton, gridToolButton;
     private Button lineToolButton, rectToolButton, ellipseToolButton, eyedropperToolButton, selectionToolButton;
     private TextView activeToolLabel;
     private Button symmetryButton;
@@ -49,17 +49,17 @@ public class MainActivity extends Activity {
         toolDock.setOrientation(1); toolDock.setGravity(Gravity.CENTER_HORIZONTAL);
         toolDock.setPadding(dp(5),dp(8),dp(5),dp(8)); toolDock.setBackground(roundedPanel(Color.rgb(248,248,250),dp(30)));
         brushToolButton=addDockIcon(toolDock,"brush","Brush",()->{drawingView.setEyedropper(false);drawingView.setEraser(false);drawingView.setBucketTool(false);drawingView.setShapeTool(0);drawingView.setSelectionTool(false);setActiveTool("BRUSH");});
-        addDockIcon(toolDock,"hand","Pan",()->Toast.makeText(this,"Use two fingers to move the canvas",Toast.LENGTH_SHORT).show());
+        handToolButton=addDockIcon(toolDock,"hand","Pan",()->Toast.makeText(this,"Use two fingers to move the canvas",Toast.LENGTH_SHORT).show());
         eraserToolButton=addDockIcon(toolDock,"eraser","Eraser",()->{drawingView.setEyedropper(false);drawingView.setEraser(true);drawingView.setBucketTool(false);drawingView.setShapeTool(0);drawingView.setSelectionTool(false);setActiveTool("ERASER");});
         View colorDot=new View(this); GradientDrawable dot=roundedPanel(currentColor,dp(30));dot.setCornerRadius(dp(30));colorDot.setBackground(dot);
         LinearLayout.LayoutParams dotLp=new LinearLayout.LayoutParams(dp(30),dp(30));dotLp.setMargins(0,dp(8),0,dp(8));toolDock.addView(colorDot,dotLp);colorDot.setOnClickListener(v->showColorWheel());
         fillToolButton=addDockIcon(toolDock,"fill","Fill",()->{drawingView.setEyedropper(false);drawingView.setEraser(false);drawingView.setShapeTool(0);drawingView.setBucketTool(true);drawingView.setSelectionTool(false);setActiveTool("FILL");});
-        selectionToolButton=addDockIcon(toolDock,"move","Move",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
-        addDockIcon(toolDock,"lasso","Lasso",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
-        addDockIcon(toolDock,"magic","Magic selection",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
-        addDockIcon(toolDock,"image","Image",()->Toast.makeText(this,"Image import is not available yet",Toast.LENGTH_SHORT).show());
-        addDockIcon(toolDock,"layers","Layers",()->showLayers());
-        addDockIcon(toolDock,"grid","Grid",()->drawingView.setGridEnabled(!drawingView.isGridEnabled()));
+        moveToolButton=addDockIcon(toolDock,"move","Move selection",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
+        lassoToolButton=addDockIcon(toolDock,"lasso","Lasso selection",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
+        magicToolButton=addDockIcon(toolDock,"magic","Magic wand",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
+        imageToolButton=addDockIcon(toolDock,"image","Import image",()->Toast.makeText(this,"Image import is not available yet",Toast.LENGTH_SHORT).show());
+        layersToolButton=addDockIcon(toolDock,"layers","Layers",()->showLayers());
+        gridToolButton=addDockIcon(toolDock,"grid","Grid",()->drawingView.setGridEnabled(!drawingView.isGridEnabled()));
         toolDock.addView(new View(this),new LinearLayout.LayoutParams(1,0,1));
         LinearLayout sliders=new LinearLayout(this);sliders.setOrientation(1);sliders.setGravity(Gravity.CENTER_HORIZONTAL);sliders.setBackground(roundedPanel(Color.rgb(229,230,234),dp(22)));
         SeekBar size=new SeekBar(this);size.setMax(139);size.setProgress(17);size.setRotation(-90);
@@ -175,40 +175,39 @@ public class MainActivity extends Activity {
     }
 
     private void setActiveTool(String tool) {
-        if (activeToolLabel != null) activeToolLabel.setText(tool);
-        styleToolButton(brushToolButton,"BRUSH".equals(tool));
-        styleToolButton(eraserToolButton,"ERASER".equals(tool));
-        styleToolButton(fillToolButton,"FILL".equals(tool));
-        styleToolButton(lineToolButton,"LINE".equals(tool));
-        styleToolButton(rectToolButton,"RECT".equals(tool));
-        styleToolButton(ellipseToolButton,"ELLIPSE".equals(tool));
-        styleToolButton(eyedropperToolButton,"PICKER".equals(tool));
-        styleToolButton(selectionToolButton,"SELECT".equals(tool));
+        if(activeToolLabel!=null) activeToolLabel.setText(tool);
+        styleToolButton(brushToolButton,"brush","BRUSH".equals(tool));
+        styleToolButton(handToolButton,"hand","PAN".equals(tool));
+        styleToolButton(eraserToolButton,"eraser","ERASER".equals(tool));
+        styleToolButton(fillToolButton,"fill","FILL".equals(tool));
+        styleToolButton(moveToolButton,"move","SELECT".equals(tool));
+        styleToolButton(lassoToolButton,"lasso",false);
+        styleToolButton(magicToolButton,"magic",false);
+        styleToolButton(imageToolButton,"image",false);
+        styleToolButton(layersToolButton,"layers",false);
+        styleToolButton(gridToolButton,"grid",false);
+        styleToolButton(lineToolButton,"line","LINE".equals(tool));
+        styleToolButton(rectToolButton,"rect","RECT".equals(tool));
+        styleToolButton(ellipseToolButton,"ellipse","ELLIPSE".equals(tool));
+        styleToolButton(eyedropperToolButton,"picker","PICKER".equals(tool));
     }
 
-    private void styleToolButton(Button button, boolean active) {
-        if (button == null) return;
-        String type = button == brushToolButton ? "brush"
-                : button == eraserToolButton ? "eraser"
-                : button == fillToolButton ? "fill"
-                : button == lineToolButton ? "line"
-                : button == rectToolButton ? "rect"
-                : button == ellipseToolButton ? "ellipse"
-                : button == eyedropperToolButton ? "picker" : "select";
+    private void styleToolButton(Button button,String type,boolean active) {
+        if(button==null) return;
         button.setText("");
-        button.setContentDescription(type + " tool");
-        StudioToolIcon icon = new StudioToolIcon(type,active);
-        icon.setBounds(0,0,30,30);
+        button.setContentDescription(type+" tool");
+        StudioToolIcon icon=new StudioToolIcon(type,active);
+        icon.setBounds(0,0,dp(30),dp(30));
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(2,2,2,2);
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(active ? Color.rgb(43,67,105) : Color.rgb(43,46,53));
-        background.setCornerRadius(5);
-        background.setStroke(active ? 2 : 1,
-                active ? Color.rgb(104,166,255) : Color.rgb(76,82,94));
-        button.setBackground(background);
+        button.setPadding(0,0,0,0);
+        GradientDrawable bg=new GradientDrawable();
+        bg.setColor(active?Color.rgb(224,233,250):Color.TRANSPARENT);
+        bg.setCornerRadius(dp(12));
+        bg.setStroke(0,Color.TRANSPARENT);
+        button.setBackground(bg);
+        button.setElevation(active?dp(1):0);
     }
 
     // Small, deliberately pixelated Windows-era tool artwork.
@@ -241,15 +240,15 @@ public class MainActivity extends Activity {
                 path(canvas,20,7,23,5,26,8,24,11);
                 p.setStyle(Paint.Style.FILL); canvas.drawCircle(6,26,2,p);
             } else if("eraser".equals(type)) {
-                path(canvas,8,21,18,7,25,12,15,26,8,21);
-                line(canvas,12,24,19,15);
-                p.setStyle(Paint.Style.FILL); p.setColor(Color.rgb(145,166,205));
-                path(canvas,8,21,14,13,20,19,15,26,8,21);
+                path(canvas,6,20,18,7,26,15,14,27,6,20);
+                line(canvas,10,23,18,15);
+                line(canvas,14,27,25,27);
             } else if("fill".equals(type)) {
-                path(canvas,7,12,22,12,20,25,10,25,7,12);
-                line(canvas,5,9,24,9);
-                path(canvas,18,6,25,6,25,10);
-                p.setStyle(Paint.Style.FILL); canvas.drawCircle(25,20,2.2f,p);
+                path(canvas,6,11,17,22,23,16,12,5,6,11);
+                line(canvas,15,20,10,25);
+                line(canvas,9,26,20,26);
+                path(canvas,22,19,25,23,22,27,19,23,22,19);
+                p.setStyle(Paint.Style.FILL); canvas.drawCircle(24,25,1.5f,p);
             } else if("line".equals(type)) {
                 line(canvas,6,25,26,7);
                 p.setStyle(Paint.Style.FILL); canvas.drawCircle(6,25,2.2f,p); canvas.drawCircle(26,7,2.2f,p);
