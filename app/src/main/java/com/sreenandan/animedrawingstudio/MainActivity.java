@@ -663,7 +663,7 @@ public class MainActivity extends Activity {
                     row.addView(dragHandle,new LinearLayout.LayoutParams(42,48));
                     dragHandle.setOnLongClickListener(v -> {
                         android.content.ClipData data=android.content.ClipData.newPlainText("layer",String.valueOf(index));
-                        v.startDrag(data,new View.DragShadowBuilder(v),layerCard,0);
+                        v.startDrag(data,new View.DragShadowBuilder(layerCard),layerCard,0);
                         return true;
                     });
                     TextView select = new TextView(MainActivity.this);
@@ -708,28 +708,44 @@ public class MainActivity extends Activity {
                         switch(event.getAction()) {
                             case android.view.DragEvent.ACTION_DRAG_STARTED:
                                 return event.getClipDescription()!=null;
+                            case android.view.DragEvent.ACTION_DRAG_LOCATION: {
+                                Object state=event.getLocalState();
+                                if(!(state instanceof View)) return true;
+                                View moving=(View)state;
+                                int fromPosition=rows.indexOfChild(moving);
+                                int targetPosition=rows.indexOfChild(layerCard);
+                                if(fromPosition<0 || targetPosition<0) return true;
+                                int insertPosition=targetPosition;
+                                if(event.getY()>layerCard.getHeight()/2f) insertPosition++;
+                                if(insertPosition>fromPosition) insertPosition--;
+                                insertPosition=Math.max(0,Math.min(rows.getChildCount()-1,insertPosition));
+                                if(insertPosition!=fromPosition) {
+                                    android.transition.TransitionManager.beginDelayedTransition(rows);
+                                    rows.removeView(moving);
+                                    rows.addView(moving,insertPosition);
+                                }
+                                return true;
+                            }
                             case android.view.DragEvent.ACTION_DRAG_ENTERED:
-                                layerCard.setBackgroundColor(Color.rgb(205,220,240));
                                 return true;
                             case android.view.DragEvent.ACTION_DRAG_EXITED:
-                                layerCard.setBackgroundColor(Color.TRANSPARENT);
                                 return true;
-                            case android.view.DragEvent.ACTION_DROP:
-                                layerCard.setBackgroundColor(Color.TRANSPARENT);
+                            case android.view.DragEvent.ACTION_DROP: {
                                 Object state=event.getLocalState();
                                 if(state instanceof View) {
-                                    Object fromTag=((View)state).getTag();
-                                    Object toTag=layerCard.getTag();
-                                    if(fromTag instanceof Integer && toTag instanceof Integer) {
-                                        int count=names.size();
-                                        int fromModel=count-1-(Integer)fromTag;
-                                        int toModel=count-1-(Integer)toTag;
+                                    View moving=(View)state;
+                                    Object fromTag=moving.getTag();
+                                    int finalVisualPosition=rows.indexOfChild(moving);
+                                    int count=names.size();
+                                    if(fromTag instanceof Integer && finalVisualPosition>=0) {
+                                        int fromModel=(Integer)fromTag;
+                                        int toModel=count-1-finalVisualPosition;
                                         if(drawingView.moveLayer(fromModel,toModel)) refresh[0].run();
                                     }
                                 }
                                 return true;
+                            }
                             case android.view.DragEvent.ACTION_DRAG_ENDED:
-                                layerCard.setBackgroundColor(Color.TRANSPARENT);
                                 return true;
                         }
                         return true;
