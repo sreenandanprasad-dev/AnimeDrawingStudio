@@ -35,20 +35,20 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         installCrashReporter();
-        getWindow().setStatusBarColor(Color.rgb(15,16,19));
-        getWindow().setNavigationBarColor(Color.rgb(15,16,19));
+        getWindow().setStatusBarColor(Color.rgb(38,112,171));
+        getWindow().setNavigationBarColor(Color.rgb(207,235,246));
 
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
-        root.setBackgroundColor(Color.rgb(24,25,29));
+        root.setBackground(glassGradient(Color.rgb(218,244,250),Color.rgb(126,190,211),Color.rgb(255,255,255),dp(0)));
 
         LinearLayout titleBar = new LinearLayout(this);
         titleBar.setGravity(Gravity.CENTER_VERTICAL);
         titleBar.setPadding(10,2,8,2);
-        titleBar.setBackgroundColor(Color.rgb(27,29,34));
+        titleBar.setBackground(glassGradient(Color.rgb(250,255,255),Color.rgb(174,220,239),Color.rgb(255,255,255),dp(14)));
         TextView appTitle = new TextView(this);
         appTitle.setText("✎  Anime Drawing Studio");
-        appTitle.setTextColor(Color.WHITE);
+        appTitle.setTextColor(Color.rgb(25,74,112));
         appTitle.setTextSize(15);
         appTitle.setTypeface(Typeface.DEFAULT_BOLD);
         titleBar.addView(appTitle,new LinearLayout.LayoutParams(-1,32));
@@ -56,7 +56,7 @@ public class MainActivity extends Activity {
         LinearLayout toolbar = new LinearLayout(this);
         toolbar.setGravity(Gravity.CENTER_VERTICAL);
         toolbar.setPadding(4,3,4,3);
-        toolbar.setBackgroundColor(Color.rgb(32,34,39));
+        toolbar.setBackground(glassGradient(Color.rgb(255,255,255),Color.rgb(178,220,240),Color.rgb(255,255,255),dp(12)));
         addButton(toolbar,"↶",() -> drawingView.undo());
         addButton(toolbar,"↷",() -> drawingView.redo());
         addButton(toolbar,"▤",() -> showLayers());
@@ -86,7 +86,7 @@ public class MainActivity extends Activity {
         LinearLayout tools = new LinearLayout(this);
         tools.setOrientation(LinearLayout.VERTICAL);
         tools.setPadding(5,3,5,4);
-        tools.setBackgroundColor(Color.rgb(32,34,39));
+        tools.setBackground(glassGradient(Color.rgb(250,255,255),Color.rgb(167,216,233),Color.rgb(255,255,255),dp(12)));
 
         LinearLayout colors = new LinearLayout(this);
         int[] palette = {Color.BLACK, Color.WHITE, Color.RED, Color.rgb(255,130,0),
@@ -118,7 +118,7 @@ public class MainActivity extends Activity {
         toolRow.setOrientation(LinearLayout.VERTICAL);
         toolRow.setGravity(Gravity.CENTER_HORIZONTAL);
         toolRow.setPadding(3,4,3,4);
-        toolRow.setBackgroundColor(Color.rgb(29,31,36));
+        toolRow.setBackground(glassGradient(Color.rgb(255,255,255),Color.rgb(178,222,239),Color.rgb(255,255,255),dp(12)));
         brushToolButton = addButton(toolRow, "✎", () -> {
             drawingView.setEyedropper(false);
             drawingView.setEraser(false);
@@ -164,11 +164,11 @@ public class MainActivity extends Activity {
         });
         activeToolLabel = new TextView(this);
         activeToolLabel.setText("BRUSH");
-        activeToolLabel.setTextColor(Color.rgb(120,180,255));
+        activeToolLabel.setTextColor(Color.rgb(20,91,145));
         activeToolLabel.setTypeface(Typeface.DEFAULT_BOLD);
         activeToolLabel.setTextSize(10);
         activeToolLabel.setGravity(Gravity.CENTER);
-        activeToolLabel.setBackgroundColor(Color.rgb(38,43,54));
+        activeToolLabel.setBackground(glassGradient(Color.rgb(255,255,255),Color.rgb(189,229,244),Color.rgb(255,255,255),dp(9)));
         toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,30));
         tools.addView(toolRow);
 
@@ -176,7 +176,7 @@ public class MainActivity extends Activity {
         sizeOpacityRow.setGravity(Gravity.CENTER_VERTICAL);
         TextView sizeLabel = new TextView(this);
         sizeLabel.setText("Size");
-        sizeLabel.setTextColor(Color.rgb(220,224,232));
+        sizeLabel.setTextColor(Color.rgb(24,76,108));
         sizeLabel.setTextSize(11);
         sizeOpacityRow.addView(sizeLabel);
         SeekBar size = new SeekBar(this);
@@ -194,7 +194,7 @@ public class MainActivity extends Activity {
         sizeOpacityRow.addView(size,new LinearLayout.LayoutParams(0,30,1));
         TextView opacityLabel = new TextView(this);
         opacityLabel.setText("Opacity");
-        opacityLabel.setTextColor(Color.rgb(220,224,232));
+        opacityLabel.setTextColor(Color.rgb(24,76,108));
         opacityLabel.setTextSize(11);
         sizeOpacityRow.addView(opacityLabel);
         SeekBar opacity = new SeekBar(this);
@@ -230,7 +230,7 @@ public class MainActivity extends Activity {
         presetStabilizerRow.addView(presets,new LinearLayout.LayoutParams(0,32,1));
         TextView stabilizerLabel = new TextView(this);
         stabilizerLabel.setText("Stab 0");
-        stabilizerLabel.setTextColor(Color.rgb(220,224,232));
+        stabilizerLabel.setTextColor(Color.rgb(24,76,108));
         stabilizerLabel.setTextSize(11);
         presetStabilizerRow.addView(stabilizerLabel);
         SeekBar stabilizerBar = new SeekBar(this);
@@ -248,14 +248,14 @@ public class MainActivity extends Activity {
         });
         presetStabilizerRow.addView(stabilizerBar,new LinearLayout.LayoutParams(0,30,1));
         tools.addView(presetStabilizerRow);
-        android.content.res.ColorStateList accent = android.content.res.ColorStateList.valueOf(Color.rgb(91,145,255));
+        android.content.res.ColorStateList accent = android.content.res.ColorStateList.valueOf(Color.rgb(30,155,202));
         size.setProgressTintList(accent); size.setThumbTintList(accent);
         opacity.setProgressTintList(accent); opacity.setThumbTintList(accent);
         stabilizerBar.setProgressTintList(accent); stabilizerBar.setThumbTintList(accent);
         tools.removeView(toolRow);
         LinearLayout workspace = new LinearLayout(this);
         workspace.setOrientation(LinearLayout.HORIZONTAL);
-        workspace.setBackgroundColor(Color.rgb(24,25,29));
+        workspace.setBackground(glassGradient(Color.rgb(223,247,250),Color.rgb(177,221,231),Color.rgb(255,255,255),dp(0)));
         workspace.addView(toolRow,new LinearLayout.LayoutParams(54,-1));
         workspace.addView(drawingView,new LinearLayout.LayoutParams(0,-1,1));
         root.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
@@ -335,7 +335,7 @@ public class MainActivity extends Activity {
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(2,2,2,2);
+        button.setPadding(2,2,2,2);\n        button.setElevation(dp(active?3:1));
         GradientDrawable background = new GradientDrawable();
         background.setColor(active ? Color.rgb(43,67,105) : Color.rgb(43,46,53));
         background.setCornerRadius(5);
@@ -348,7 +348,7 @@ public class MainActivity extends Activity {
     private class PixelToolIcon extends android.graphics.drawable.Drawable {
         private final String type;
         private final Paint p = new Paint();
-        PixelToolIcon(String type) { this.type=type; p.setAntiAlias(false); }
+        PixelToolIcon(String type) { this.type=type; p.setAntiAlias(true); }
         private void px(Canvas c,int x,int y,int w,int h,int color) {
             p.setShader(null); p.setColor(color); p.setStyle(Paint.Style.FILL);
             c.drawRect(x,y,x+w,y+h,p);
@@ -439,7 +439,7 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(label);
         b.setTextSize(parent.getOrientation()==LinearLayout.VERTICAL ? 21 : 12);
-        b.setTextColor(Color.rgb(225,229,237));
+        b.setTextColor(Color.rgb(24,75,108));
         b.setAllCaps(false);
         b.setTypeface(Typeface.DEFAULT);
         b.setPadding(3,0,3,0);
