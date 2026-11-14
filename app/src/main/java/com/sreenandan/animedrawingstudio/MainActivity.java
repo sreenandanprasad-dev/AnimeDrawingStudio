@@ -747,6 +747,8 @@ public class MainActivity extends Activity {
             else Toast.makeText(this,"Layer limit reached (6)",Toast.LENGTH_SHORT).show();
         });
         addButton(actions,"Rename",() -> renameLayer(refresh[0]));
+        addButton(actions,"↑ Up",() -> { if (drawingView.moveActiveLayer(1)) refresh[0].run(); });
+        addButton(actions,"↓ Down",() -> { if (drawingView.moveActiveLayer(-1)) refresh[0].run(); });
         addButton(actions,"Delete",() -> {
             if (!drawingView.deleteActiveLayer())
                 Toast.makeText(this,"Keep at least one layer",Toast.LENGTH_SHORT).show();
@@ -1319,6 +1321,19 @@ public class MainActivity extends Activity {
         void setActiveLayer(int index) {
             if (index>=0 && index<layers.size()) activeLayer=index;
             invalidate();
+        }
+        boolean moveActiveLayer(int direction) {
+            int target=activeLayer+direction;
+            if(target<0 || target>=layers.size()) return false;
+            Layer current=layers.get(activeLayer);
+            Layer adjacent=layers.get(target);
+            layers.set(activeLayer,adjacent);
+            layers.set(target,current);
+            activeLayer=target;
+            // Undo records refer to layer indexes; discard them after changing stack order.
+            clearHistory();
+            invalidate();
+            return true;
         }
         boolean addLayer() {
             if (layers.size()>=6) return false;
