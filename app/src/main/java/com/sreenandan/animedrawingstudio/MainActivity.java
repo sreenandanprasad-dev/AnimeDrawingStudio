@@ -714,7 +714,12 @@ public class MainActivity extends Activity {
                                 View moving=(View)state;
                                 int fromPosition=rows.indexOfChild(moving);
                                 int targetPosition=rows.indexOfChild(layerCard);
-                                if(fromPosition<0 || targetPosition<0) return true;
+                                if(fromPosition<0 || targetPosition<0 || moving==layerCard) return true;
+
+                                // Move only the visible card while the finger is held.
+                                // Keep its original model-index tag unchanged. The actual
+                                // canvas stack is reordered once, on ACTION_DROP, using the
+                                // original index and the final visual position.
                                 int insertPosition=targetPosition;
                                 if(event.getY()>layerCard.getHeight()/2f) insertPosition++;
                                 if(insertPosition>fromPosition) insertPosition--;
@@ -723,21 +728,6 @@ public class MainActivity extends Activity {
                                     android.transition.TransitionManager.beginDelayedTransition(rows);
                                     rows.removeView(moving);
                                     rows.addView(moving,insertPosition);
-
-                                    // Reorder the real drawing stack at the same time as the
-                                    // cards slide, so the canvas immediately reflects the move.
-                                    Object modelTag=moving.getTag();
-                                    int count=names.size();
-                                    if(modelTag instanceof Integer) {
-                                        int fromModel=(Integer)modelTag;
-                                        int toModel=count-1-insertPosition;
-                                        if(fromModel!=toModel) drawingView.moveLayer(fromModel,toModel);
-                                    }
-                                    // Keep every card's tag synchronized with its new model index.
-                                    for(int cardPosition=0;cardPosition<rows.getChildCount();cardPosition++) {
-                                        View card=rows.getChildAt(cardPosition);
-                                        card.setTag(count-1-cardPosition);
-                                    }
                                 }
                                 return true;
                             }
