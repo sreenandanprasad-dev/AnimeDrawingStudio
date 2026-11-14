@@ -865,7 +865,7 @@ public class MainActivity extends Activity {
                 name=label;
                 if(source==null || source.isRecycled())
                     throw new IllegalStateException("Source layer bitmap is unavailable");
-                bitmap=source.copy(Bitmap.Config.ARGB_8888,false);
+                bitmap=source.copy(Bitmap.Config.ARGB_8888,true);
                 // Bitmap.copy() can return null on some devices instead of throwing.
                 // Never add a layer without a valid pixel buffer.
                 if(bitmap==null)
