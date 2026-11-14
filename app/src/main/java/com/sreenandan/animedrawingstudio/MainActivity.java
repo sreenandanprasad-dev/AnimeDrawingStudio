@@ -340,19 +340,14 @@ public class MainActivity extends Activity {
                 : button == eyedropperToolButton ? "picker" : "select";
         button.setText("");
         button.setContentDescription(type + " tool");
-        PixelToolIcon icon = new PixelToolIcon(type);
-        icon.setBounds(0,0,30,30);
+        AeroToolIcon icon = new AeroToolIcon(type,active);
+        icon.setBounds(0,0,dp(42),dp(42));
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(2,2,2,2);
-        button.setElevation(dp(active?3:1));
-        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                active ? new int[]{Color.WHITE,Color.rgb(197,239,252),Color.rgb(100,184,222)}
-                       : new int[]{Color.WHITE,Color.rgb(239,250,254),Color.rgb(199,231,243)});
-        background.setCornerRadius(dp(9));
-        background.setStroke(dp(active?2:1),active?Color.rgb(52,148,199):Color.WHITE);
-        button.setBackground(background);
+        button.setPadding(1,1,1,1);
+        button.setElevation(dp(active?4:1));
+        button.setBackgroundColor(Color.TRANSPARENT);
     }
 
     // Glossy, three-dimensional Frutiger Aero tool artwork.
