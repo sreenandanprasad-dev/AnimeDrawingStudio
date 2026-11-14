@@ -806,7 +806,13 @@ public class MainActivity extends Activity {
             }
             Layer(String label,Bitmap source) {
                 name=label;
+                if(source==null || source.isRecycled())
+                    throw new IllegalStateException("Source layer bitmap is unavailable");
                 bitmap=source.copy(Bitmap.Config.ARGB_8888,false);
+                // Bitmap.copy() can return null on some devices instead of throwing.
+                // Never add a layer without a valid pixel buffer.
+                if(bitmap==null)
+                    throw new OutOfMemoryError("Layer bitmap copy failed");
             }
         }
         private class Snapshot {
@@ -1272,7 +1278,10 @@ public class MainActivity extends Activity {
                 copy=new Layer(source.name + " copy",source.bitmap);
             } catch (OutOfMemoryError memoryError) {
                 System.gc();
-                Toast.makeText(MainActivity.this,"Not enough memory to duplicate this layer.",Toast.LENGTH_LONG).show();
+                Toast.makeText(MainActivity.this,"Could not copy this layer. Please try again.",Toast.LENGTH_LONG).show();
+                return false;
+            } catch (RuntimeException copyError) {
+                Toast.makeText(MainActivity.this,"This layer could not be copied safely.",Toast.LENGTH_LONG).show();
                 return false;
             }
             copy.visible=source.visible;
