@@ -300,10 +300,11 @@ public class MainActivity extends Activity {
     }
 
     private GradientDrawable bevel(boolean pressed) {
-        GradientDrawable d = new GradientDrawable();
-        d.setColor(pressed ? Color.rgb(66,76,96) : Color.rgb(43,46,53));
-        d.setCornerRadius(5);
-        d.setStroke(pressed ? 2 : 1, pressed ? Color.rgb(105,165,255) : Color.rgb(77,82,92));
+        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                pressed ? new int[]{Color.rgb(190,239,255),Color.rgb(83,180,222),Color.rgb(35,126,184)}
+                        : new int[]{Color.WHITE,Color.rgb(226,246,252),Color.rgb(151,211,235)});
+        d.setCornerRadius(dp(9));
+        d.setStroke(dp(1),pressed?Color.rgb(35,132,187):Color.rgb(255,255,255));
         return d;
     }
 
@@ -336,11 +337,11 @@ public class MainActivity extends Activity {
         button.setCompoundDrawablePadding(0);
         button.setGravity(Gravity.CENTER);
         button.setPadding(2,2,2,2);\n        button.setElevation(dp(active?3:1));
-        GradientDrawable background = new GradientDrawable();
-        background.setColor(active ? Color.rgb(43,67,105) : Color.rgb(43,46,53));
-        background.setCornerRadius(5);
-        background.setStroke(active ? 2 : 1,
-                active ? Color.rgb(104,166,255) : Color.rgb(76,82,94));
+        GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                active ? new int[]{Color.WHITE,Color.rgb(197,239,252),Color.rgb(100,184,222)}
+                       : new int[]{Color.WHITE,Color.rgb(239,250,254),Color.rgb(199,231,243)});
+        background.setCornerRadius(dp(9));
+        background.setStroke(dp(active?2:1),active?Color.rgb(52,148,199):Color.WHITE);
         button.setBackground(background);
     }
 
