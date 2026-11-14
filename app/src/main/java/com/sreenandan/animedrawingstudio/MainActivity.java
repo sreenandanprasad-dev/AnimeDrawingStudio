@@ -336,7 +336,8 @@ public class MainActivity extends Activity {
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(2,2,2,2);\n        button.setElevation(dp(active?3:1));
+        button.setPadding(2,2,2,2);
+        button.setElevation(dp(active?3:1));
         GradientDrawable background = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 active ? new int[]{Color.WHITE,Color.rgb(197,239,252),Color.rgb(100,184,222)}
                        : new int[]{Color.WHITE,Color.rgb(239,250,254),Color.rgb(199,231,243)});
