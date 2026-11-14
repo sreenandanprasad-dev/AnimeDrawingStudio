@@ -45,16 +45,39 @@ public class MainActivity extends Activity {
         drawingView = new DrawingView();
         root.addView(drawingView,new FrameLayout.LayoutParams(-1,-1));
 
-        // Slim floating tool dock. The drawing surface stays underneath the controls.
-        LinearLayout toolDock = new LinearLayout(this);
-        toolDock.setOrientation(LinearLayout.VERTICAL);
-        toolDock.setGravity(Gravity.CENTER_HORIZONTAL);
-        toolDock.setPadding(dp(5),dp(7),dp(5),dp(7));
-        toolDock.setBackground(studioPanelBackground());
-        brushToolButton = addButton(toolDock,"✎",() -> {
-            drawingView.setEyedropper(false); drawingView.setEraser(false);
-            drawingView.setBucketTool(false); drawingView.setShapeTool(0);
-            setActiveTool("BRUSH");
+        LinearLayout toolDock=new LinearLayout(this);
+        toolDock.setOrientation(1); toolDock.setGravity(Gravity.CENTER_HORIZONTAL);
+        toolDock.setPadding(dp(5),dp(8),dp(5),dp(8)); toolDock.setBackground(roundedPanel(Color.rgb(248,248,250),dp(30)));
+        brushToolButton=addDockIcon(toolDock,"brush","Brush",()->{drawingView.setEyedropper(false);drawingView.setEraser(false);drawingView.setBucketTool(false);drawingView.setShapeTool(0);drawingView.setSelectionTool(false);setActiveTool("BRUSH");});
+        addDockIcon(toolDock,"hand","Pan",()->Toast.makeText(this,"Use two fingers to move the canvas",Toast.LENGTH_SHORT).show());
+        eraserToolButton=addDockIcon(toolDock,"eraser","Eraser",()->{drawingView.setEyedropper(false);drawingView.setEraser(true);drawingView.setBucketTool(false);drawingView.setShapeTool(0);drawingView.setSelectionTool(false);setActiveTool("ERASER");});
+        View colorDot=new View(this); GradientDrawable dot=roundedPanel(currentColor,dp(30));dot.setCornerRadius(dp(30));colorDot.setBackground(dot);
+        LinearLayout.LayoutParams dotLp=new LinearLayout.LayoutParams(dp(30),dp(30));dotLp.setMargins(0,dp(8),0,dp(8));toolDock.addView(colorDot,dotLp);colorDot.setOnClickListener(v->showColorWheel());
+        fillToolButton=addDockIcon(toolDock,"fill","Fill",()->{drawingView.setEyedropper(false);drawingView.setEraser(false);drawingView.setShapeTool(0);drawingView.setBucketTool(true);drawingView.setSelectionTool(false);setActiveTool("FILL");});
+        selectionToolButton=addDockIcon(toolDock,"move","Move",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
+        addDockIcon(toolDock,"lasso","Lasso",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
+        addDockIcon(toolDock,"magic","Magic selection",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
+        addDockIcon(toolDock,"image","Image",()->Toast.makeText(this,"Image import is not available yet",Toast.LENGTH_SHORT).show());
+        addDockIcon(toolDock,"layers","Layers",()->showLayers());
+        addDockIcon(toolDock,"grid","Grid",()->drawingView.setGridEnabled(!drawingView.isGridEnabled()));
+        toolDock.addView(new View(this),new LinearLayout.LayoutParams(1,0,1));
+        LinearLayout sliders=new LinearLayout(this);sliders.setOrientation(1);sliders.setGravity(Gravity.CENTER_HORIZONTAL);sliders.setBackground(roundedPanel(Color.rgb(229,230,234),dp(22)));
+        SeekBar size=new SeekBar(this);size.setMax(139);size.setProgress(17);size.setRotation(-90);
+        size.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar v,int n,boolean u){brushSize=Math.max(1,n+1);drawingView.setBrushSize(brushSize);}public void onStartTrackingTouch(SeekBar v){}public void onStopTrackingTouch(SeekBar v){}});
+        sliders.addView(size,new LinearLayout.LayoutParams(dp(145),dp(34)));
+        TextView sm=new TextView(this);sm.setText("S");sm.setTextColor(Color.DKGRAY);sm.setGravity(Gravity.CENTER);sm.setBackground(circleButtonBackground());sliders.addView(sm,new LinearLayout.LayoutParams(dp(34),dp(34)));
+        SeekBar opacity=new SeekBar(this);opacity.setMax(100);opacity.setProgress(100);opacity.setRotation(-90);
+        opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar v,int n,boolean u){brushOpacity=n;drawingView.setBrushOpacity(n);}public void onStartTrackingTouch(SeekBar v){}public void onStopTrackingTouch(SeekBar v){}});
+        sliders.addView(opacity,new LinearLayout.LayoutParams(dp(145),dp(34)));
+        TextView om=new TextView(this);om.setText("O");om.setTextColor(Color.DKGRAY);om.setGravity(Gravity.CENTER);om.setBackground(circleButtonBackground());sliders.addView(om,new LinearLayout.LayoutParams(dp(34),dp(34)));
+        LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(dp(48),dp(190));slp.topMargin=dp(8);toolDock.addView(sliders,slp);
+        root.addView(toolDock,frameParams(dp(58),-1,Gravity.LEFT|Gravity.CENTER_VERTICAL,dp(8),dp(8),0,dp(8)));
+        LinearLayout topDock=new LinearLayout(this);topDock.setGravity(Gravity.CENTER);topDock.setPadding(dp(8),dp(5),dp(8),dp(5));topDock.setBackground(roundedPanel(Color.rgb(250,250,251),dp(30)));
+        addStudioButton(topDock,"↶","Undo",()->drawingView.undo());addStudioButton(topDock,"↷","Redo",()->drawingView.redo());
+        View sep=new View(this);sep.setBackgroundColor(Color.rgb(215,216,220));LinearLayout.LayoutParams sepLp=new LinearLayout.LayoutParams(dp(1),dp(30));sepLp.setMargins(dp(5),0,dp(5),0);topDock.addView(sep,sepLp);
+        addStudioButton(topDock,"▱","Layers",()->showLayers());addStudioButton(topDock,"⚙","Settings",()->showStudioSettings());addStudioButton(topDock,"×","Close",()->drawingView.resetView());
+        root.addView(topDock,frameParams(-2,dp(50),Gravity.TOP|Gravity.RIGHT,0,dp(8),dp(8),0));
+        setActiveTool("BRUSH");
         });
         eraserToolButton = addButton(toolDock,"▱",() -> {
             drawingView.setEyedropper(false); drawingView.setEraser(true);
@@ -285,7 +308,7 @@ public class MainActivity extends Activity {
                 : button == eyedropperToolButton ? "picker" : "select";
         button.setText("");
         button.setContentDescription(type + " tool");
-        StudioToolIcon icon = new StudioToolIcon(type);
+        StudioToolIcon icon = new StudioToolIcon(type,active);
         icon.setBounds(0,0,30,30);
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
@@ -319,7 +342,7 @@ public class MainActivity extends Activity {
             int save=canvas.save();
             canvas.translate(b.left,b.top);
             canvas.scale(b.width()/32f,b.height()/32f);
-            p.setShader(null); p.setColor(Color.rgb(67,75,89));
+            p.setShader(null); p.setColor(active?Color.rgb(42,91,205):Color.rgb(45,47,51));
             p.setStrokeWidth(2.35f); p.setStrokeCap(Paint.Cap.ROUND);
             p.setStrokeJoin(Paint.Join.ROUND); p.setStyle(Paint.Style.STROKE);
             if("brush".equals(type)) {
@@ -348,6 +371,13 @@ public class MainActivity extends Activity {
                 path(canvas,7,25,20,12,24,16,11,28,7,25);
                 line(canvas,19,13,23,9);
                 canvas.drawCircle(25,7,2.5f,p);
+            } else if("hand".equals(type)){path(canvas,7,14,7,10,10,8,12,10,12,6,15,5,17,7,17,5,20,5,22,8,22,16,19,24,12,25,8,21);
+            } else if("move".equals(type)){line(canvas,16,4,16,28);line(canvas,4,16,28,16);path(canvas,12,8,16,4,20,8);path(canvas,12,24,16,28,20,24);path(canvas,8,12,4,16,8,20);path(canvas,24,12,28,16,24,20);
+            } else if("lasso".equals(type)){p.setPathEffect(new DashPathEffect(new float[]{2,2},0));canvas.drawOval(5,6,27,23,p);p.setPathEffect(null);path(canvas,10,22,8,27,13,25);
+            } else if("magic".equals(type)){line(canvas,8,24,23,9);line(canvas,19,7,25,13);line(canvas,6,7,6,3);line(canvas,4,5,8,5);line(canvas,25,23,25,19);line(canvas,23,21,27,21);
+            } else if("image".equals(type)){canvas.drawRoundRect(4,5,28,27,3,3,p);p.setStyle(Paint.Style.FILL);canvas.drawCircle(11,12,2,p);p.setStyle(Paint.Style.STROKE);path(canvas,6,24,14,16,18,20,22,15,27,22);
+            } else if("layers".equals(type)){path(canvas,4,11,16,5,28,11,16,17,4,11);path(canvas,5,16,16,22,27,16);path(canvas,5,21,16,27,27,21);
+            } else if("grid".equals(type)){canvas.drawRoundRect(4,4,13,13,1,1,p);canvas.drawRoundRect(19,4,28,13,1,1,p);canvas.drawRoundRect(4,19,13,28,1,1,p);canvas.drawRoundRect(19,19,28,28,1,1,p);
             } else {
                 p.setPathEffect(new DashPathEffect(new float[]{2.5f,2.5f},0));
                 canvas.drawRect(6,6,26,26,p);
