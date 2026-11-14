@@ -82,6 +82,24 @@ public class MainActivity extends Activity {
         showPreviousCrashReport();
     }
 
+    private GradientDrawable roundedPanel(int color,int radius) {
+        GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(radius);
+        d.setStroke(dp(1),Color.rgb(230,231,235)); return d;
+    }
+    private GradientDrawable circleButtonBackground() {
+        GradientDrawable d=new GradientDrawable(); d.setColor(Color.WHITE); d.setShape(GradientDrawable.OVAL);
+        d.setStroke(dp(1),Color.rgb(180,182,188)); return d;
+    }
+    private Button addDockIcon(LinearLayout parent,String type,String description,Runnable action) {
+        Button b=new Button(this); b.setText(""); b.setContentDescription(description);
+        b.setAllCaps(false); b.setPadding(0,0,0,0); b.setMinWidth(0); b.setMinimumWidth(0);
+        b.setMinHeight(0); b.setMinimumHeight(0); b.setBackgroundColor(Color.TRANSPARENT);
+        StudioToolIcon icon=new StudioToolIcon(type,false); icon.setBounds(0,0,dp(30),dp(30));
+        b.setCompoundDrawables(null,icon,null,null); b.setGravity(Gravity.CENTER);
+        parent.addView(b,new LinearLayout.LayoutParams(dp(42),dp(48)));
+        b.setOnClickListener(v->action.run()); return b;
+    }
+
     private FrameLayout.LayoutParams frameParams(int width,int height,int gravity,
                                                   int left,int top,int right,int bottom) {
         FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(width,height,gravity);
@@ -157,7 +175,7 @@ public class MainActivity extends Activity {
     }
 
     private void setActiveTool(String tool) {
-        activeToolLabel.setText(tool);
+        if (activeToolLabel != null) activeToolLabel.setText(tool);
         styleToolButton(brushToolButton,"BRUSH".equals(tool));
         styleToolButton(eraserToolButton,"ERASER".equals(tool));
         styleToolButton(fillToolButton,"FILL".equals(tool));
@@ -198,7 +216,7 @@ public class MainActivity extends Activity {
     private class StudioToolIcon extends android.graphics.drawable.Drawable {
         private final String type;
         private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
-        StudioToolIcon(String type) { this.type=type; }
+        StudioToolIcon(String type,boolean active) { this.type=type; this.active=active; }
         private void line(Canvas c,float x1,float y1,float x2,float y2) {
             c.drawLine(x1,y1,x2,y2,p);
         }
