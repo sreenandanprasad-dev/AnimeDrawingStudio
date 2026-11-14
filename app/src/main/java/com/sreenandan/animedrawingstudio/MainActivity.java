@@ -27,8 +27,7 @@ public class MainActivity extends Activity {
     private int brushOpacity = 100;
     private int stabilizer = 0;
     private int brushPreset = 0;
-    private Button brushToolButton, handToolButton, eraserToolButton, fillToolButton;
-    private Button moveToolButton, lassoToolButton, magicToolButton, imageToolButton, layersToolButton, gridToolButton;
+    private Button brushToolButton, eraserToolButton, fillToolButton;
     private Button lineToolButton, rectToolButton, ellipseToolButton, eyedropperToolButton, selectionToolButton;
     private TextView activeToolLabel;
     private Button symmetryButton;
@@ -36,121 +35,254 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         installCrashReporter();
-        getWindow().setStatusBarColor(Color.rgb(242,243,246));
-        getWindow().setNavigationBarColor(Color.rgb(242,243,246));
-        getWindow().getDecorView().setSystemUiVisibility(View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR
-                | View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR);
+        getWindow().setStatusBarColor(Color.rgb(15,16,19));
+        getWindow().setNavigationBarColor(Color.rgb(15,16,19));
 
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.rgb(235,237,241));
+        LinearLayout root = new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setBackgroundColor(Color.rgb(24,25,29));
+
+        LinearLayout titleBar = new LinearLayout(this);
+        titleBar.setGravity(Gravity.CENTER_VERTICAL);
+        titleBar.setPadding(10,2,8,2);
+        titleBar.setBackgroundColor(Color.rgb(27,29,34));
+        TextView appTitle = new TextView(this);
+        appTitle.setText("✎  Anime Drawing Studio");
+        appTitle.setTextColor(Color.WHITE);
+        appTitle.setTextSize(15);
+        appTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        titleBar.addView(appTitle,new LinearLayout.LayoutParams(-1,32));
+
+        LinearLayout toolbar = new LinearLayout(this);
+        toolbar.setGravity(Gravity.CENTER_VERTICAL);
+        toolbar.setPadding(4,3,4,3);
+        toolbar.setBackgroundColor(Color.rgb(32,34,39));
+        addButton(toolbar,"↶",() -> drawingView.undo());
+        addButton(toolbar,"↷",() -> drawingView.redo());
+        addButton(toolbar,"▤",() -> showLayers());
+        addButton(toolbar,"Save",() -> saveImage());
+        addButton(toolbar,"⌕",() -> drawingView.resetView());
+        addButton(toolbar,"Sel X",() -> drawingView.clearSelection());
+        addButton(toolbar,"Dup",() -> drawingView.duplicateSelection());
+        addButton(toolbar,"Flip H",() -> drawingView.flipSelection(true));
+        addButton(toolbar,"Flip V",() -> drawingView.flipSelection(false));
+        addButton(toolbar,"Del Sel",() -> drawingView.deleteSelection());
+        addButton(toolbar,"All",() -> drawingView.selectAll());
+        Button gridButton = addButton(toolbar,"Grid OFF",() -> {
+            boolean enabled = !drawingView.isGridEnabled();
+            drawingView.setGridEnabled(enabled);
+            gridButtonLabelRefresh(toolbar,enabled);
+        });
+        symmetryButton = addButton(toolbar,"Sym OFF",() -> {
+            boolean enabled = !drawingView.isSymmetryEnabled();
+            drawingView.setSymmetryEnabled(enabled);
+            symmetryButton.setText(enabled ? "Sym ON" : "Sym OFF");
+        });
+
         drawingView = new DrawingView();
-        root.addView(drawingView,new FrameLayout.LayoutParams(-1,-1));
+        root.addView(titleBar,new LinearLayout.LayoutParams(-1,34));
+        root.addView(toolbar, new LinearLayout.LayoutParams(-1, 42));
 
-        LinearLayout toolDock=new LinearLayout(this);
-        toolDock.setOrientation(1); toolDock.setGravity(Gravity.CENTER_HORIZONTAL);
-        toolDock.setPadding(dp(5),dp(8),dp(5),dp(8)); toolDock.setBackground(roundedPanel(Color.rgb(248,248,250),dp(30)));
-        brushToolButton=addDockIcon(toolDock,"brush","Brush",()->{drawingView.clearSelection();drawingView.setEyedropper(false);drawingView.setEraser(false);drawingView.setBucketTool(false);drawingView.setShapeTool(0);drawingView.setSelectionTool(false);setActiveTool("BRUSH");});
-        handToolButton=addDockIcon(toolDock,"hand","Pan",()->{drawingView.clearSelection();drawingView.setSelectionTool(false);Toast.makeText(this,"Pan the canvas with two fingers",Toast.LENGTH_SHORT).show();});
-        eraserToolButton=addDockIcon(toolDock,"eraser","Eraser",()->{drawingView.clearSelection();drawingView.setEyedropper(false);drawingView.setEraser(true);drawingView.setBucketTool(false);drawingView.setShapeTool(0);drawingView.setSelectionTool(false);setActiveTool("ERASER");});
-        View colorDot=new View(this); GradientDrawable dot=roundedPanel(currentColor,dp(30));dot.setCornerRadius(dp(30));colorDot.setBackground(dot);
-        LinearLayout.LayoutParams dotLp=new LinearLayout.LayoutParams(dp(30),dp(30));dotLp.setMargins(0,dp(8),0,dp(8));toolDock.addView(colorDot,dotLp);colorDot.setOnClickListener(v->showColorWheel());
-        fillToolButton=addDockIcon(toolDock,"fill","Fill",()->{drawingView.clearSelection();drawingView.setEyedropper(false);drawingView.setEraser(false);drawingView.setShapeTool(0);drawingView.setBucketTool(true);drawingView.setSelectionTool(false);setActiveTool("FILL");});
-        moveToolButton=addDockIcon(toolDock,"move","Move selection",()->{drawingView.setSelectionTool(true);setActiveTool("SELECT");});
-        lassoToolButton=addDockIcon(toolDock,"lasso","Lasso selection",()->Toast.makeText(this,"Lasso selection is not implemented yet",Toast.LENGTH_SHORT).show());
-        magicToolButton=addDockIcon(toolDock,"magic","Magic wand",()->Toast.makeText(this,"Magic wand selection is not implemented yet",Toast.LENGTH_SHORT).show());
-        imageToolButton=addDockIcon(toolDock,"image","Import image",()->Toast.makeText(this,"Image import is not available yet",Toast.LENGTH_SHORT).show());
-        layersToolButton=addDockIcon(toolDock,"layers","Layers",()->showLayers());
-        gridToolButton=addDockIcon(toolDock,"grid","Grid",()->drawingView.setGridEnabled(!drawingView.isGridEnabled()));
-        toolDock.addView(new View(this),new LinearLayout.LayoutParams(1,0,1));
-        LinearLayout sliders=new LinearLayout(this);sliders.setOrientation(1);sliders.setGravity(Gravity.CENTER_HORIZONTAL);sliders.setBackground(roundedPanel(Color.rgb(229,230,234),dp(22)));
-        SeekBar size=new SeekBar(this);size.setMax(139);size.setProgress(17);size.setRotation(-90);
-        size.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar v,int n,boolean u){brushSize=Math.max(1,n+1);drawingView.setBrushSize(brushSize);}public void onStartTrackingTouch(SeekBar v){}public void onStopTrackingTouch(SeekBar v){}});
-        sliders.addView(size,new LinearLayout.LayoutParams(dp(145),dp(34)));
-        TextView sm=new TextView(this);sm.setText("S");sm.setTextColor(Color.DKGRAY);sm.setGravity(Gravity.CENTER);sm.setBackground(circleButtonBackground());sliders.addView(sm,new LinearLayout.LayoutParams(dp(34),dp(34)));
-        SeekBar opacity=new SeekBar(this);opacity.setMax(100);opacity.setProgress(100);opacity.setRotation(-90);
-        opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar v,int n,boolean u){brushOpacity=n;drawingView.setBrushOpacity(n);}public void onStartTrackingTouch(SeekBar v){}public void onStopTrackingTouch(SeekBar v){}});
-        sliders.addView(opacity,new LinearLayout.LayoutParams(dp(145),dp(34)));
-        TextView om=new TextView(this);om.setText("O");om.setTextColor(Color.DKGRAY);om.setGravity(Gravity.CENTER);om.setBackground(circleButtonBackground());sliders.addView(om,new LinearLayout.LayoutParams(dp(34),dp(34)));
-        LinearLayout.LayoutParams slp=new LinearLayout.LayoutParams(dp(48),dp(190));slp.topMargin=dp(8);toolDock.addView(sliders,slp);
-        root.addView(toolDock,frameParams(dp(58),-1,Gravity.LEFT|Gravity.CENTER_VERTICAL,dp(8),dp(8),0,dp(8)));
-        LinearLayout topDock=new LinearLayout(this);topDock.setGravity(Gravity.CENTER);topDock.setPadding(dp(8),dp(5),dp(8),dp(5));topDock.setBackground(roundedPanel(Color.rgb(250,250,251),dp(30)));
-        addStudioButton(topDock,"↶","Undo",()->drawingView.undo());addStudioButton(topDock,"↷","Redo",()->drawingView.redo());
-        View sep=new View(this);sep.setBackgroundColor(Color.rgb(215,216,220));LinearLayout.LayoutParams sepLp=new LinearLayout.LayoutParams(dp(1),dp(30));sepLp.setMargins(dp(5),0,dp(5),0);topDock.addView(sep,sepLp);
-        addStudioButton(topDock,"▱","Layers",()->showLayers());addStudioButton(topDock,"⚙","Settings",()->showStudioSettings());addStudioButton(topDock,"×","Close",()->drawingView.resetView());
-        root.addView(topDock,frameParams(-2,dp(50),Gravity.TOP|Gravity.RIGHT,0,dp(8),dp(8),0));
+        LinearLayout tools = new LinearLayout(this);
+        tools.setOrientation(LinearLayout.VERTICAL);
+        tools.setPadding(5,3,5,4);
+        tools.setBackgroundColor(Color.rgb(32,34,39));
+
+        LinearLayout colors = new LinearLayout(this);
+        int[] palette = {Color.BLACK, Color.WHITE, Color.RED, Color.rgb(255,130,0),
+                Color.YELLOW, Color.GREEN, Color.CYAN, Color.BLUE,
+                Color.MAGENTA, Color.rgb(130,70,210), Color.rgb(120,75,45)};
+        for (int color : palette) {
+            View swatch = new View(this);
+            swatch.setBackgroundColor(color);
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0,22,1);
+            p.setMargins(2,1,2,1);
+            colors.addView(swatch,p);
+            swatch.setOnClickListener(v -> {
+                // Changing colour must never change the active drawing tool.
+                currentColor = color;
+            });
+        }
+        Button wheelButton = new Button(this);
+        wheelButton.setText("Wheel");
+        wheelButton.setTextSize(10);
+        wheelButton.setAllCaps(false);
+        wheelButton.setPadding(1,0,1,0);
+        wheelButton.setOnClickListener(v -> showColorWheel());
+        LinearLayout.LayoutParams wheelParams = new LinearLayout.LayoutParams(0,30,1);
+        wheelParams.setMargins(2,1,2,1);
+        colors.addView(wheelButton,wheelParams);
+        tools.addView(colors);
+
+        LinearLayout toolRow = new LinearLayout(this);
+        toolRow.setOrientation(LinearLayout.VERTICAL);
+        toolRow.setGravity(Gravity.CENTER_HORIZONTAL);
+        toolRow.setPadding(3,4,3,4);
+        toolRow.setBackgroundColor(Color.rgb(29,31,36));
+        brushToolButton = addButton(toolRow, "✎", () -> {
+            drawingView.setEyedropper(false);
+            drawingView.setEraser(false);
+            setActiveTool("BRUSH");
+        });
+        eraserToolButton = addButton(toolRow, "▰", () -> {
+            drawingView.setEyedropper(false);
+            drawingView.setEraser(true);
+            setActiveTool("ERASER");
+        });
+        fillToolButton = addButton(toolRow, "▧", () -> {
+            drawingView.setEyedropper(false);
+            drawingView.setBucketTool(true);
+            setActiveTool("FILL");
+        });
+        lineToolButton = addButton(toolRow, "╱", () -> {
+            drawingView.setEyedropper(false);
+            drawingView.setShapeTool(1);
+            setActiveTool("LINE");
+        });
+        rectToolButton = addButton(toolRow, "□", () -> {
+            drawingView.setEyedropper(false);
+            drawingView.setShapeTool(2);
+            setActiveTool("RECT");
+        });
+        ellipseToolButton = addButton(toolRow, "○", () -> {
+            drawingView.setEyedropper(false);
+            drawingView.setShapeTool(3);
+            setActiveTool("ELLIPSE");
+        });
+        eyedropperToolButton = addButton(toolRow, "Pick", () -> {
+            drawingView.setEyedropper(true);
+            drawingView.setBucketTool(false);
+            drawingView.setShapeTool(0);
+            drawingView.setEraser(false);
+            setActiveTool("PICKER");
+            Toast.makeText(this,"Tap the canvas to pick a colour",Toast.LENGTH_SHORT).show();
+        });
+        selectionToolButton = addButton(toolRow, "Sel", () -> {
+            drawingView.setSelectionTool(true);
+            setActiveTool("SELECT");
+            Toast.makeText(this,"Drag on the canvas to make a rectangular selection",Toast.LENGTH_SHORT).show();
+        });
+        activeToolLabel = new TextView(this);
+        activeToolLabel.setText("BRUSH");
+        activeToolLabel.setTextColor(Color.rgb(120,180,255));
+        activeToolLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        activeToolLabel.setTextSize(10);
+        activeToolLabel.setGravity(Gravity.CENTER);
+        activeToolLabel.setBackgroundColor(Color.rgb(38,43,54));
+        toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,30));
+        tools.addView(toolRow);
+
+        LinearLayout sizeOpacityRow = new LinearLayout(this);
+        sizeOpacityRow.setGravity(Gravity.CENTER_VERTICAL);
+        TextView sizeLabel = new TextView(this);
+        sizeLabel.setText("Size");
+        sizeLabel.setTextColor(Color.rgb(220,224,232));
+        sizeLabel.setTextSize(11);
+        sizeOpacityRow.addView(sizeLabel);
+        SeekBar size = new SeekBar(this);
+        size.setMax(80);
+        size.setProgress(6);
+        size.setPadding(2,0,4,0);
+        size.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar b,int value,boolean user) {
+                brushSize = Math.max(1,value);
+                drawingView.setBrushSize(brushSize);
+            }
+            public void onStartTrackingTouch(SeekBar b) {}
+            public void onStopTrackingTouch(SeekBar b) {}
+        });
+        sizeOpacityRow.addView(size,new LinearLayout.LayoutParams(0,30,1));
+        TextView opacityLabel = new TextView(this);
+        opacityLabel.setText("Opacity");
+        opacityLabel.setTextColor(Color.rgb(220,224,232));
+        opacityLabel.setTextSize(11);
+        sizeOpacityRow.addView(opacityLabel);
+        SeekBar opacity = new SeekBar(this);
+        opacity.setMax(100);
+        opacity.setProgress(100);
+        opacity.setPadding(2,0,4,0);
+        opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar b,int value,boolean user) {
+                brushOpacity = value;
+                drawingView.setBrushOpacity(brushOpacity);
+            }
+            public void onStartTrackingTouch(SeekBar b) {}
+            public void onStopTrackingTouch(SeekBar b) {}
+        });
+        sizeOpacityRow.addView(opacity,new LinearLayout.LayoutParams(0,30,1));
+        tools.addView(sizeOpacityRow);
+
+        LinearLayout presetStabilizerRow = new LinearLayout(this);
+        presetStabilizerRow.setGravity(Gravity.CENTER_VERTICAL);
+        Spinner presets = new Spinner(this);
+        String[] presetNames = {"G-Pen", "Mapping Pen", "Pencil", "Marker", "Airbrush"};
+        ArrayAdapter<String> presetAdapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_item, presetNames);
+        presetAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        presets.setAdapter(presetAdapter);
+        presets.setSelection(brushPreset);
+        presets.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
+                brushPreset = position;
+                drawingView.setBrushPreset(position);
+            }
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+        presetStabilizerRow.addView(presets,new LinearLayout.LayoutParams(0,32,1));
+        TextView stabilizerLabel = new TextView(this);
+        stabilizerLabel.setText("Stab 0");
+        stabilizerLabel.setTextColor(Color.rgb(220,224,232));
+        stabilizerLabel.setTextSize(11);
+        presetStabilizerRow.addView(stabilizerLabel);
+        SeekBar stabilizerBar = new SeekBar(this);
+        stabilizerBar.setMax(100);
+        stabilizerBar.setProgress(0);
+        stabilizerBar.setPadding(2,0,2,0);
+        stabilizerBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            public void onProgressChanged(SeekBar b,int value,boolean user) {
+                stabilizer = value;
+                stabilizerLabel.setText("Stab " + value);
+                drawingView.setStabilizer(value);
+            }
+            public void onStartTrackingTouch(SeekBar b) {}
+            public void onStopTrackingTouch(SeekBar b) {}
+        });
+        presetStabilizerRow.addView(stabilizerBar,new LinearLayout.LayoutParams(0,30,1));
+        tools.addView(presetStabilizerRow);
+        android.content.res.ColorStateList accent = android.content.res.ColorStateList.valueOf(Color.rgb(91,145,255));
+        size.setProgressTintList(accent); size.setThumbTintList(accent);
+        opacity.setProgressTintList(accent); opacity.setThumbTintList(accent);
+        stabilizerBar.setProgressTintList(accent); stabilizerBar.setThumbTintList(accent);
+        tools.removeView(toolRow);
+        LinearLayout workspace = new LinearLayout(this);
+        workspace.setOrientation(LinearLayout.HORIZONTAL);
+        workspace.setBackgroundColor(Color.rgb(24,25,29));
+        workspace.addView(toolRow,new LinearLayout.LayoutParams(54,-1));
+        workspace.addView(drawingView,new LinearLayout.LayoutParams(0,-1,1));
+        root.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
+        root.addView(tools,new LinearLayout.LayoutParams(-1,132));
+
+        android.content.SharedPreferences preferences = getSharedPreferences("drawing_ui",MODE_PRIVATE);
+        final boolean[] rightHanded = {preferences.getBoolean("right_handed",true)};
+        tools.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
+        toolbar.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
+        Button handButton = addButton(toolbar,rightHanded[0] ? "Right" : "Left",() -> {
+            rightHanded[0] = !rightHanded[0];
+            preferences.edit().putBoolean("right_handed",rightHanded[0]).apply();
+            tools.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
+            toolbar.setLayoutDirection(rightHanded[0] ? View.LAYOUT_DIRECTION_LTR : View.LAYOUT_DIRECTION_RTL);
+            handButtonLabelRefresh(toolbar,rightHanded[0]);
+        });
+        handButton.setTextSize(10);
         setActiveTool("BRUSH");
         setContentView(root);
         showPreviousCrashReport();
     }
 
-    private GradientDrawable roundedPanel(int color,int radius) {
-        GradientDrawable d=new GradientDrawable(); d.setColor(color); d.setCornerRadius(radius);
-        d.setStroke(dp(1),Color.rgb(230,231,235)); return d;
-    }
-    private GradientDrawable circleButtonBackground() {
-        GradientDrawable d=new GradientDrawable(); d.setColor(Color.WHITE); d.setShape(GradientDrawable.OVAL);
-        d.setStroke(dp(1),Color.rgb(180,182,188)); return d;
-    }
-    private Button addDockIcon(LinearLayout parent,String type,String description,Runnable action) {
-        Button b=new Button(this); b.setText(""); b.setContentDescription(description);
-        b.setAllCaps(false); b.setPadding(0,0,0,0); b.setMinWidth(0); b.setMinimumWidth(0);
-        b.setMinHeight(0); b.setMinimumHeight(0); b.setBackgroundColor(Color.TRANSPARENT);
-        StudioToolIcon icon=new StudioToolIcon(type,false); icon.setBounds(0,0,dp(30),dp(30));
-        b.setCompoundDrawables(null,icon,null,null); b.setGravity(Gravity.CENTER);
-        parent.addView(b,new LinearLayout.LayoutParams(dp(42),dp(48)));
-        b.setOnClickListener(v->action.run()); return b;
-    }
-
-    private FrameLayout.LayoutParams frameParams(int width,int height,int gravity,
-                                                  int left,int top,int right,int bottom) {
-        FrameLayout.LayoutParams lp=new FrameLayout.LayoutParams(width,height,gravity);
-        lp.setMargins(left,top,right,bottom);
-        return lp;
-    }
-
-    private GradientDrawable studioPanelBackground() {
-        GradientDrawable bg=new GradientDrawable();
-        bg.setColor(Color.argb(245,248,248,250));
-        bg.setCornerRadius(dp(15));
-        bg.setStroke(dp(1),Color.rgb(222,224,229));
-        return bg;
-    }
-
-    private Button addStudioButton(LinearLayout parent,String symbol,String description,Runnable action) {
-        Button b=new Button(this);
-        b.setText(symbol); b.setTextSize(18); b.setTextColor(Color.rgb(48,51,58));
-        b.setAllCaps(false); b.setMinWidth(dp(38)); b.setMinimumWidth(dp(38));
-        b.setMinHeight(dp(38)); b.setMinimumHeight(dp(38));
-        b.setPadding(dp(3),0,dp(3),0);
-        b.setBackgroundColor(Color.TRANSPARENT);
-        b.setContentDescription(description);
-        parent.addView(b,new LinearLayout.LayoutParams(dp(40),dp(40)));
-        b.setOnClickListener(v -> action.run());
-        return b;
-    }
-
-    private void showStudioSettings() {
-        LinearLayout panel=new LinearLayout(this);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(12),dp(8),dp(12),dp(4));
-        addStudioButton(panel,"▦","Toggle grid",() ->
-                drawingView.setGridEnabled(!drawingView.isGridEnabled()));
-        addStudioButton(panel,"◇","Toggle mirror",() ->
-                drawingView.setSymmetryEnabled(!drawingView.isSymmetryEnabled()));
-        addStudioButton(panel,"×","Clear selection",() -> drawingView.clearSelection());
-        addStudioButton(panel,"▣","Duplicate selection",() -> drawingView.duplicateSelection());
-        addStudioButton(panel,"⇋","Flip selection horizontally",() -> drawingView.flipSelection(true));
-        addStudioButton(panel,"⇵","Flip selection vertically",() -> drawingView.flipSelection(false));
-        addStudioButton(panel,"⌫","Delete selection",() -> drawingView.deleteSelection());
-        new AlertDialog.Builder(this).setTitle("Studio tools").setView(panel)
-                .setNegativeButton("Close",null).show();
-    }
-
     private void gridButtonLabelRefresh(LinearLayout toolbar, boolean enabled) {
         for (int i=0;i<toolbar.getChildCount();i++) {
             View child=toolbar.getChildAt(i);
-            if (child instanceof Button && ("▦".equals(((Button)child).getText().toString()) || "▣".equals(((Button)child).getText().toString()))) {
-                ((Button)child).setText(enabled ? "▣" : "▦");
+            if (child instanceof Button && (((Button)child).getText().toString().startsWith("Grid"))) {
+                ((Button)child).setText(enabled ? "Grid ON" : "Grid OFF");
                 return;
             }
         }
@@ -176,105 +308,123 @@ public class MainActivity extends Activity {
     }
 
     private void setActiveTool(String tool) {
-        if(activeToolLabel!=null) activeToolLabel.setText(tool);
-        styleToolButton(brushToolButton,"brush","BRUSH".equals(tool));
-        styleToolButton(handToolButton,"hand","PAN".equals(tool));
-        styleToolButton(eraserToolButton,"eraser","ERASER".equals(tool));
-        styleToolButton(fillToolButton,"fill","FILL".equals(tool));
-        styleToolButton(moveToolButton,"move","SELECT".equals(tool));
-        styleToolButton(lassoToolButton,"lasso",false);
-        styleToolButton(magicToolButton,"magic",false);
-        styleToolButton(imageToolButton,"image",false);
-        styleToolButton(layersToolButton,"layers",false);
-        styleToolButton(gridToolButton,"grid",false);
-        styleToolButton(lineToolButton,"line","LINE".equals(tool));
-        styleToolButton(rectToolButton,"rect","RECT".equals(tool));
-        styleToolButton(ellipseToolButton,"ellipse","ELLIPSE".equals(tool));
-        styleToolButton(eyedropperToolButton,"picker","PICKER".equals(tool));
+        activeToolLabel.setText(tool);
+        styleToolButton(brushToolButton,"BRUSH".equals(tool));
+        styleToolButton(eraserToolButton,"ERASER".equals(tool));
+        styleToolButton(fillToolButton,"FILL".equals(tool));
+        styleToolButton(lineToolButton,"LINE".equals(tool));
+        styleToolButton(rectToolButton,"RECT".equals(tool));
+        styleToolButton(ellipseToolButton,"ELLIPSE".equals(tool));
+        styleToolButton(eyedropperToolButton,"PICKER".equals(tool));
+        styleToolButton(selectionToolButton,"SELECT".equals(tool));
     }
 
-    private void styleToolButton(Button button,String type,boolean active) {
-        if(button==null) return;
+    private void styleToolButton(Button button, boolean active) {
+        if (button == null) return;
+        String type = button == brushToolButton ? "brush"
+                : button == eraserToolButton ? "eraser"
+                : button == fillToolButton ? "fill"
+                : button == lineToolButton ? "line"
+                : button == rectToolButton ? "rect"
+                : button == ellipseToolButton ? "ellipse"
+                : button == eyedropperToolButton ? "picker" : "select";
         button.setText("");
-        button.setContentDescription(type+" tool");
-        StudioToolIcon icon=new StudioToolIcon(type,active);
-        icon.setBounds(0,0,dp(30),dp(30));
+        button.setContentDescription(type + " tool");
+        PixelToolIcon icon = new PixelToolIcon(type);
+        icon.setBounds(0,0,30,30);
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
         button.setGravity(Gravity.CENTER);
-        button.setPadding(0,0,0,0);
-        GradientDrawable bg=new GradientDrawable();
-        bg.setColor(active?Color.rgb(224,233,250):Color.TRANSPARENT);
-        bg.setCornerRadius(dp(12));
-        bg.setStroke(0,Color.TRANSPARENT);
-        button.setBackground(bg);
-        button.setElevation(active?dp(1):0);
+        button.setPadding(2,2,2,2);
+        GradientDrawable background = new GradientDrawable();
+        background.setColor(active ? Color.rgb(43,67,105) : Color.rgb(43,46,53));
+        background.setCornerRadius(5);
+        background.setStroke(active ? 2 : 1,
+                active ? Color.rgb(104,166,255) : Color.rgb(76,82,94));
+        button.setBackground(background);
     }
 
     // Small, deliberately pixelated Windows-era tool artwork.
-    // Smooth, recognisable vector-style tool icons (not pixel-art glyphs).
-    private class StudioToolIcon extends android.graphics.drawable.Drawable {
+    private class PixelToolIcon extends android.graphics.drawable.Drawable {
         private final String type;
-        private final boolean active;
-        private final Paint p=new Paint(Paint.ANTI_ALIAS_FLAG);
-        StudioToolIcon(String type,boolean active) { this.type=type; this.active=active; }
-        private void line(Canvas c,float x1,float y1,float x2,float y2) {
-            c.drawLine(x1,y1,x2,y2,p);
+        private final Paint p = new Paint();
+        PixelToolIcon(String type) { this.type=type; p.setAntiAlias(false); }
+        private void px(Canvas c,int x,int y,int w,int h,int color) {
+            p.setShader(null); p.setColor(color); p.setStyle(Paint.Style.FILL);
+            c.drawRect(x,y,x+w,y+h,p);
         }
-        private void path(Canvas c,float... xy) {
-            Path shape=new Path();
-            shape.moveTo(xy[0],xy[1]);
-            for(int i=2;i<xy.length;i+=2) shape.lineTo(xy[i],xy[i+1]);
-            c.drawPath(shape,p);
+        private void bevelBox(Canvas c,int x,int y,int w,int h) {
+            px(c,x,y,w,h,Color.rgb(45,48,54));
+            px(c,x+1,y+1,w-2,h-2,Color.rgb(245,245,238));
+            px(c,x+2,y+2,w-4,h-4,Color.rgb(190,193,190));
+        }
+        private void pencil(Canvas c,int x,int y,int length,int color) {
+            // Diagonal shaft with dark outline, coloured lacquer, metal ferrule and graphite tip.
+            for(int i=0;i<length;i++) {
+                px(c,x+i,y+length-i,5,5,Color.rgb(30,30,30));
+                px(c,x+i+1,y+length-i+1,3,3,color);
+                px(c,x+i+1,y+length-i+1,1,2,Color.rgb(255,255,255));
+            }
+            px(c,x+length,y,5,5,Color.rgb(205,170,105));
+            px(c,x+length+2,y+2,3,3,Color.rgb(35,35,35));
         }
         @Override public void draw(Canvas canvas) {
             Rect b=getBounds();
             int save=canvas.save();
             canvas.translate(b.left,b.top);
             canvas.scale(b.width()/32f,b.height()/32f);
-            p.setShader(null); p.setColor(active?Color.rgb(42,91,205):Color.rgb(45,47,51));
-            p.setStrokeWidth(2.35f); p.setStrokeCap(Paint.Cap.ROUND);
-            p.setStrokeJoin(Paint.Join.ROUND); p.setStyle(Paint.Style.STROKE);
-            if("brush".equals(type)) {
-                path(canvas,7,25,23,9);
-                line(canvas,6,26,10,25);
-                path(canvas,20,7,23,5,26,8,24,11);
-                p.setStyle(Paint.Style.FILL); canvas.drawCircle(6,26,2,p);
-            } else if("eraser".equals(type)) {
-                path(canvas,6,20,18,7,26,15,14,27,6,20);
-                line(canvas,10,23,18,15);
-                line(canvas,14,27,25,27);
-            } else if("fill".equals(type)) {
-                path(canvas,6,11,17,22,23,16,12,5,6,11);
-                line(canvas,15,20,10,25);
-                line(canvas,9,26,20,26);
-                path(canvas,22,19,25,23,22,27,19,23,22,19);
-                p.setStyle(Paint.Style.FILL); canvas.drawCircle(24,25,1.5f,p);
-            } else if("line".equals(type)) {
-                line(canvas,6,25,26,7);
-                p.setStyle(Paint.Style.FILL); canvas.drawCircle(6,25,2.2f,p); canvas.drawCircle(26,7,2.2f,p);
-            } else if("rect".equals(type)) {
-                canvas.drawRect(6,7,26,25,p);
-            } else if("ellipse".equals(type)) {
-                canvas.drawOval(5,8,27,24,p);
-            } else if("picker".equals(type)) {
-                path(canvas,7,25,20,12,24,16,11,28,7,25);
-                line(canvas,19,13,23,9);
-                canvas.drawCircle(25,7,2.5f,p);
-            } else if("hand".equals(type)){path(canvas,7,14,7,10,10,8,12,10,12,6,15,5,17,7,17,5,20,5,22,8,22,16,19,24,12,25,8,21);
-            } else if("move".equals(type)){line(canvas,16,4,16,28);line(canvas,4,16,28,16);path(canvas,12,8,16,4,20,8);path(canvas,12,24,16,28,20,24);path(canvas,8,12,4,16,8,20);path(canvas,24,12,28,16,24,20);
-            } else if("lasso".equals(type)){p.setPathEffect(new DashPathEffect(new float[]{2,2},0));canvas.drawOval(5,6,27,23,p);p.setPathEffect(null);path(canvas,10,22,8,27,13,25);
-            } else if("magic".equals(type)){line(canvas,8,24,23,9);line(canvas,19,7,25,13);line(canvas,6,7,6,3);line(canvas,4,5,8,5);line(canvas,25,23,25,19);line(canvas,23,21,27,21);
-            } else if("image".equals(type)){canvas.drawRoundRect(4,5,28,27,3,3,p);p.setStyle(Paint.Style.FILL);canvas.drawCircle(11,12,2,p);p.setStyle(Paint.Style.STROKE);path(canvas,6,24,14,16,18,20,22,15,27,22);
-            } else if("layers".equals(type)){path(canvas,4,11,16,5,28,11,16,17,4,11);path(canvas,5,16,16,22,27,16);path(canvas,5,21,16,27,27,21);
-            } else if("grid".equals(type)){canvas.drawRoundRect(4,4,13,13,1,1,p);canvas.drawRoundRect(19,4,28,13,1,1,p);canvas.drawRoundRect(4,19,13,28,1,1,p);canvas.drawRoundRect(19,19,28,28,1,1,p);
+            int ink=Color.rgb(35,35,35), hi=Color.rgb(255,255,255);
+            int blue=Color.rgb(25,82,205), mid=Color.rgb(65,125,245);
+            int grey=Color.rgb(170,174,174);
+            if ("brush".equals(type)) {
+                pencil(canvas,5,4,17,blue);
+                px(canvas,3,23,5,3,ink); px(canvas,4,22,4,2,grey);
+                px(canvas,3,26,3,2,ink); px(canvas,5,25,2,2,Color.rgb(245,205,75));
+                px(canvas,22,3,4,3,hi);
+            } else if ("eraser".equals(type)) {
+                px(canvas,5,11,22,14,ink);
+                px(canvas,7,8,18,14,Color.rgb(230,105,125));
+                px(canvas,8,9,15,10,Color.rgb(255,155,170));
+                px(canvas,7,18,17,4,Color.rgb(205,205,200));
+                px(canvas,5,22,22,4,ink);
+                px(canvas,8,22,16,2,hi);
+            } else if ("fill".equals(type)) {
+                // Classic tipped paint bucket with a little paint drop.
+                px(canvas,7,6,15,3,ink); px(canvas,5,9,19,3,ink);
+                px(canvas,7,12,15,10,ink); px(canvas,9,14,11,6,blue);
+                px(canvas,8,12,13,2,hi); px(canvas,20,16,5,3,Color.rgb(255,210,35));
+                px(canvas,23,19,3,4,Color.rgb(255,210,35));
+                px(canvas,18,24,6,3,ink);
+            } else if ("line".equals(type)) {
+                for(int i=0;i<19;i++) {
+                    px(canvas,5+i,23-i,4,4,ink);
+                    px(canvas,6+i,23-i,2,2,hi);
+                }
+            } else if ("rect".equals(type)) {
+                px(canvas,4,5,24,3,ink); px(canvas,4,24,24,3,ink);
+                px(canvas,4,8,3,16,ink); px(canvas,25,8,3,16,ink);
+                px(canvas,7,8,18,2,hi); px(canvas,7,10,16,12,blue);
+                px(canvas,7,22,18,2,Color.rgb(80,80,80));
+            } else if ("ellipse".equals(type)) {
+                px(canvas,11,4,10,3,ink); px(canvas,7,7,4,3,ink);
+                px(canvas,21,7,4,3,ink); px(canvas,4,10,3,12,ink);
+                px(canvas,25,10,3,12,ink); px(canvas,7,22,4,3,ink);
+                px(canvas,21,22,4,3,ink); px(canvas,11,25,10,3,ink);
+                px(canvas,11,8,10,2,hi); px(canvas,7,11,18,11,blue);
+                px(canvas,11,22,10,2,Color.rgb(80,80,80));
+            } else if ("picker".equals(type)) {
+                pencil(canvas,5,5,16,Color.rgb(30,30,30));
+                px(canvas,4,23,9,4,ink); px(canvas,5,24,7,2,Color.rgb(255,220,45));
+                px(canvas,21,7,7,7,ink); px(canvas,22,8,5,5,Color.rgb(70,190,100));
+                px(canvas,23,9,3,3,blue);
             } else {
-                p.setPathEffect(new DashPathEffect(new float[]{2.5f,2.5f},0));
-                canvas.drawRect(6,6,26,26,p);
-                p.setPathEffect(null);
-                p.setStyle(Paint.Style.FILL);
-                canvas.drawCircle(6,6,2,p); canvas.drawCircle(26,6,2,p);
-                canvas.drawCircle(6,26,2,p); canvas.drawCircle(26,26,2,p);
+                // Marching-ants marquee with classic dotted selection corners.
+                for(int x=5;x<27;x+=4){px(canvas,x,5,2,2,ink);px(canvas,x+2,5,2,2,hi);
+                    px(canvas,x,25,2,2,hi);px(canvas,x+2,25,2,2,ink);}
+                for(int y=9;y<24;y+=4){px(canvas,5,y,2,2,hi);px(canvas,5,y+2,2,2,ink);
+                    px(canvas,25,y,2,2,ink);px(canvas,25,y+2,2,2,hi);}
+                px(canvas,11,11,10,10,Color.rgb(95,145,225));
+                px(canvas,13,13,6,6,Color.rgb(180,205,245));
             }
             canvas.restoreToCount(save);
         }
@@ -1736,10 +1886,6 @@ public class MainActivity extends Activity {
                         Toast.makeText(MainActivity.this,"Selected layer is hidden",Toast.LENGTH_SHORT).show();
                         return true;
                     }
-                    if (eraser && layers.get(activeLayer).alphaLocked) {
-                        Toast.makeText(MainActivity.this,"Turn off Alpha Lock before erasing",Toast.LENGTH_SHORT).show();
-                        return true;
-                    }
                     saveUndo();
                     lastX=x; lastY=y;
                     lastTouchX=event.getX(); lastTouchY=event.getY();
@@ -1977,18 +2123,12 @@ public class MainActivity extends Activity {
                             Toast.makeText(MainActivity.this,"Turn off Alpha Lock before erasing",Toast.LENGTH_SHORT).show();
                             paint.setXfermode(null);
                         } else if(strokeEraser) {
-                            paint.setStyle(Paint.Style.STROKE);
-                            paint.setStrokeCap(Paint.Cap.ROUND);
-                            paint.setStrokeJoin(Paint.Join.ROUND);
-                            paint.setStrokeWidth(strokeWidth);
                             paint.setColor(Color.TRANSPARENT);
                             paint.setAlpha(255);
                             paint.setShader(null);
                             paint.setColorFilter(null);
                             paint.setMaskFilter(null);
-                            paint.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.CLEAR));
-                            drawSymmetricPath(new Canvas(layers.get(activeLayer).bitmap),currentPath,paint);
-                            paint.setXfermode(null);
+                            paint.setStrokeWidth(strokeWidth);
                         } else {
                             configureStrokePaint(paint,strokePreset,strokeColor,brushOpacity,strokeWidth);
                         }
