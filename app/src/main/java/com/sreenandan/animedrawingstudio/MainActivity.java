@@ -528,7 +528,7 @@ public class MainActivity extends Activity {
                             break;
                         case 10:
                             String[] gridOptions={"25 px","50 px","100 px","200 px","400 px"};
-                            new AlertDialog.Builder(this).setTitle("Grid spacing")
+                            new AlertDialog.Builder(this).setTitle("Grid spacing (current: "+drawingView.getGridSpacing()+" px)")
                                     .setItems(gridOptions,(gridDialog,gridChoice)->{
                                         int[] spacings={25,50,100,200,400};
                                         drawingView.setGridSpacing(spacings[gridChoice]);
@@ -1619,8 +1619,10 @@ public class MainActivity extends Activity {
 
         boolean isGridEnabled() { return gridEnabled; }
         void setGridEnabled(boolean enabled) { gridEnabled=enabled; invalidate(); }
+        int getGridSpacing() { return gridSpacing; }
         void setGridSpacing(int spacing) {
             gridSpacing=Math.max(25,Math.min(400,spacing));
+            gridEnabled=true;
             invalidate();
         }
 
@@ -2155,9 +2157,9 @@ public class MainActivity extends Activity {
                 canvas.drawRect(left,top,right,bottom,marquee);
             }
             if (gridEnabled) {
-                Paint gridPaint = new Paint();
-                gridPaint.setColor(Color.argb(42,70,110,150));
-                gridPaint.setStrokeWidth(1f/(scale*zoom));
+                Paint gridPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
+                gridPaint.setColor(Color.argb(105,35,92,135));
+                gridPaint.setStrokeWidth(1.8f/(scale*zoom));
                 for (int gx=gridSpacing;gx<canvasWidth;gx+=gridSpacing) canvas.drawLine(gx,0,gx,canvasHeight,gridPaint);
                 for (int gy=gridSpacing;gy<canvasHeight;gy+=gridSpacing) canvas.drawLine(0,gy,canvasWidth,gy,gridPaint);
             }
