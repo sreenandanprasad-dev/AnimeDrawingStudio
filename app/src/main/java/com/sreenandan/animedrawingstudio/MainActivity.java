@@ -2024,7 +2024,7 @@ public class MainActivity extends Activity {
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
             canvas.drawColor(Color.rgb(65,65,70));
-            float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
+            float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/canvasHeight);
             canvas.save();
             canvas.translate(getWidth()/2f+panX,getHeight()/2f+panY);
             canvas.rotate(rotation);
@@ -2083,7 +2083,7 @@ public class MainActivity extends Activity {
                 axis.setColor(Color.rgb(40,120,220));
                 axis.setStrokeWidth(2f / (scale*zoom));
                 axis.setPathEffect(new DashPathEffect(new float[]{12f/(scale*zoom),8f/(scale*zoom)},0));
-                canvas.drawLine((canvasWidth/2f),0f,(canvasWidth/2f),2200f,axis);
+                canvas.drawLine((canvasWidth/2f),0f,(canvasWidth/2f),canvasHeight,axis);
             }
             canvas.restore();
             if(eyedropperTool && pickerPreviewVisible) {
@@ -2113,7 +2113,7 @@ public class MainActivity extends Activity {
 
         @Override public boolean onTouchEvent(android.view.MotionEvent event) {
             scaleDetector.onTouchEvent(event);
-            float base=Math.min((float)getWidth()/1600f,(float)getHeight()/2200f);
+            float base=Math.min((float)getWidth()/1600f,(float)getHeight()/canvasHeight);
             float scale=base*zoom;
             float dx=event.getX()-getWidth()/2f-panX;
             float dy=event.getY()-getHeight()/2f-panY;
@@ -2170,7 +2170,7 @@ public class MainActivity extends Activity {
                             }
                         }
                         selectionStartX=Math.max(0f,Math.min(1600f,x));
-                        selectionStartY=Math.max(0f,Math.min(2200f,y));
+                        selectionStartY=Math.max(0f,Math.min(canvasHeight,y));
                         selectionEndX=selectionStartX;
                         selectionEndY=selectionStartY;
                         selectionInProgress=true;
@@ -2305,7 +2305,7 @@ public class MainActivity extends Activity {
                     }
                     if (selectionInProgress) {
                         selectionEndX=Math.max(0f,Math.min(1600f,x));
-                        selectionEndY=Math.max(0f,Math.min(2200f,y));
+                        selectionEndY=Math.max(0f,Math.min(canvasHeight,y));
                         invalidate();
                         return true;
                     }
@@ -2427,7 +2427,7 @@ public class MainActivity extends Activity {
                     }
                     if (selectionInProgress) {
                         selectionEndX=Math.max(0f,Math.min(1600f,x));
-                        selectionEndY=Math.max(0f,Math.min(2200f,y));
+                        selectionEndY=Math.max(0f,Math.min(canvasHeight,y));
                         selectionInProgress=false;
                         drawingGesture=false;
                         hasSelection=Math.abs(selectionEndX-selectionStartX)>=2f
