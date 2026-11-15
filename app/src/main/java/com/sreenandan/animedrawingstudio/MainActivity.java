@@ -32,9 +32,148 @@ public class MainActivity extends Activity {
     private TextView activeToolLabel;
     private Button symmetryButton;
 
+    private boolean studioVisible=false;
+
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         installCrashReporter();
+        getWindow().setStatusBarColor(Color.rgb(38,112,171));
+        getWindow().setNavigationBarColor(Color.rgb(207,235,246));
+        showGallery();
+        showPreviousCrashReport();
+    }
+
+    @Override public void onBackPressed() {
+        if (studioVisible) {
+            showGallery();
+        } else {
+            super.onBackPressed();
+        }
+    }
+
+    private void showGallery() {
+        studioVisible=false;
+        getWindow().setStatusBarColor(Color.rgb(38,112,171));
+        getWindow().setNavigationBarColor(Color.rgb(207,235,246));
+        LinearLayout root=new LinearLayout(this);
+        root.setOrientation(LinearLayout.VERTICAL);
+        root.setPadding(dp(12),dp(10),dp(12),dp(10));
+        root.setBackground(glassGradient(Color.rgb(218,244,250),Color.rgb(126,190,211),Color.WHITE,dp(0)));
+
+        LinearLayout header=new LinearLayout(this);
+        header.setGravity(Gravity.CENTER_VERTICAL);
+        header.setPadding(dp(12),dp(8),dp(12),dp(8));
+        header.setBackground(glassGradient(Color.WHITE,Color.rgb(174,220,239),Color.WHITE,dp(16)));
+        TextView heading=new TextView(this);
+        heading.setText("✎  Anime Drawing Studio");
+        heading.setTextColor(Color.rgb(25,74,112));
+        heading.setTextSize(19);
+        heading.setTypeface(Typeface.DEFAULT_BOLD);
+        header.addView(heading,new LinearLayout.LayoutParams(0,dp(42),1));
+        root.addView(header,new LinearLayout.LayoutParams(-1,dp(60)));
+
+        TextView subtitle=new TextView(this);
+        subtitle.setText("MY DRAWINGS");
+        subtitle.setTextColor(Color.rgb(30,91,128));
+        subtitle.setTextSize(13);
+        subtitle.setTypeface(Typeface.DEFAULT_BOLD);
+        subtitle.setPadding(dp(4),dp(14),dp(4),dp(8));
+        root.addView(subtitle);
+
+        Button newCanvas=addButton(root,"＋  New Canvas",() -> showDrawingStudio());
+        newCanvas.setTextSize(15);
+        newCanvas.setLayoutParams(new LinearLayout.LayoutParams(-1,dp(48)));
+
+        ScrollView scroll=new ScrollView(this);
+        LinearLayout grid=new LinearLayout(this);
+        grid.setOrientation(LinearLayout.VERTICAL);
+        grid.setPadding(0,dp(10),0,dp(10));
+        scroll.addView(grid);
+        root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
+
+        ArrayList<Uri> drawingUris=new ArrayList<>();
+        ArrayList<String> drawingNames=new ArrayList<>();
+        android.database.Cursor cursor=null;
+        try {
+            String[] projection={MediaStore.Images.Media._ID,MediaStore.Images.Media.DISPLAY_NAME};
+            String selection=null;
+            String[] selectionArgs=null;
+            if(Build.VERSION.SDK_INT>=29) {
+                selection=MediaStore.Images.Media.RELATIVE_PATH+"=?";
+                selectionArgs=new String[]{"Pictures/AnimeDrawingStudio/"};
+            }
+            cursor=getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                    projection,selection,selectionArgs,MediaStore.Images.Media.DATE_ADDED+" DESC");
+            if(cursor!=null) {
+                int idColumn=cursor.getColumnIndexOrThrow(MediaStore.Images.Media._ID);
+                int nameColumn=cursor.getColumnIndexOrThrow(MediaStore.Images.Media.DISPLAY_NAME);
+                while(cursor.moveToNext()) {
+                    long id=cursor.getLong(idColumn);
+                    drawingUris.add(Uri.withAppendedPath(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,String.valueOf(id)));
+                    drawingNames.add(cursor.getString(nameColumn));
+                }
+            }
+        } catch(Exception error) {
+            Toast.makeText(this,"Could not load saved drawings",Toast.LENGTH_SHORT).show();
+        } finally {
+            if(cursor!=null) cursor.close();
+        }
+
+        if(drawingUris.isEmpty()) {
+            TextView empty=new TextView(this);
+            empty.setText("No drawings saved yet.\n\nCreate your first drawing with New Canvas, then tap Save.");
+            empty.setGravity(Gravity.CENTER);
+            empty.setTextColor(Color.rgb(45,91,116));
+            empty.setTextSize(15);
+            empty.setPadding(dp(24),dp(50),dp(24),dp(50));
+            grid.addView(empty,new LinearLayout.LayoutParams(-1,dp(210)));
+        } else {
+            for(int i=0;i<drawingUris.size();i+=2) {
+                LinearLayout row=new LinearLayout(this);
+                row.setGravity(Gravity.TOP);
+                for(int j=i;j<Math.min(i+2,drawingUris.size());j++) {
+                    final Uri imageUri=drawingUris.get(j);
+                    final String imageName=drawingNames.get(j);
+                    LinearLayout tile=new LinearLayout(this);
+                    tile.setOrientation(LinearLayout.VERTICAL);
+                    tile.setPadding(dp(6),dp(6),dp(6),dp(6));
+                    tile.setBackground(glassGradient(Color.WHITE,Color.rgb(205,237,247),Color.rgb(255,255,255),dp(12)));
+                    ImageView preview=new ImageView(this);
+                    preview.setScaleType(ImageView.ScaleType.CENTER_CROP);
+                    try {
+                        if(Build.VERSION.SDK_INT>=29)
+                            preview.setImageBitmap(getContentResolver().loadThumbnail(imageUri,new android.util.Size(dp(150),dp(180)),null));
+                        else preview.setImageURI(imageUri);
+                    } catch(Exception ignored) {}
+                    tile.addView(preview,new LinearLayout.LayoutParams(-1,dp(150)));
+                    TextView name=new TextView(this);
+                    name.setText(imageName);
+                    name.setTextColor(Color.rgb(25,74,112));
+                    name.setTextSize(11);
+                    name.setMaxLines(2);
+                    name.setPadding(dp(3),dp(5),dp(3),dp(3));
+                    tile.addView(name);
+                    tile.setOnClickListener(v -> {
+                        ImageView large=new ImageView(this);
+                        large.setImageURI(imageUri);
+                        large.setAdjustViewBounds(true);
+                        large.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                        new AlertDialog.Builder(this).setTitle(imageName).setView(large)
+                                .setPositiveButton("Close",null).show();
+                    });
+                    LinearLayout.LayoutParams tileParams=new LinearLayout.LayoutParams(0,-2,1);
+                    tileParams.setMargins(dp(4),dp(4),dp(4),dp(4));
+                    row.addView(tile,tileParams);
+                }
+                if(row.getChildCount()==1) row.addView(new View(this),new LinearLayout.LayoutParams(0,1,1));
+                grid.addView(row,new LinearLayout.LayoutParams(-1,-2));
+            }
+        }
+        setContentView(root);
+    }
+
+    private void showDrawingStudio() {
+        super.onCreate(state);
         getWindow().setStatusBarColor(Color.rgb(38,112,171));
         getWindow().setNavigationBarColor(Color.rgb(207,235,246));
 
@@ -61,6 +200,7 @@ public class MainActivity extends Activity {
         addButton(toolbar,"↷",() -> drawingView.redo());
         addButton(toolbar,"▤",() -> showLayers());
         addButton(toolbar,"Save",() -> saveImage());
+        addButton(toolbar,"Home",() -> showGallery());
         addButton(toolbar,"⋮",() -> showMoreActions());
 
         drawingView = new DrawingView();
@@ -254,7 +394,6 @@ public class MainActivity extends Activity {
         handButton.setTextSize(10);
         setActiveTool("BRUSH");
         setContentView(root);
-        showPreviousCrashReport();
     }
 
     private void showShapeMenu(View anchor) {
