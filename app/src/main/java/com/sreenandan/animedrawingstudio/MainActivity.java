@@ -162,7 +162,8 @@ public class MainActivity extends Activity {
         activeToolLabel.setTextSize(10);
         activeToolLabel.setGravity(Gravity.CENTER);
         activeToolLabel.setBackground(glassGradient(Color.rgb(255,255,255),Color.rgb(189,229,244),Color.rgb(255,255,255),dp(9)));
-        activeToolLabel.setTextSize(8);\n        toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,dp(20)));
+        activeToolLabel.setTextSize(8);
+        toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,dp(20)));
         tools.addView(toolRow);
 
         LinearLayout sizeOpacityRow = new LinearLayout(this);
