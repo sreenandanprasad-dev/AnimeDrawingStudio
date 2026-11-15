@@ -27,6 +27,7 @@ public class MainActivity extends Activity {
     private View canvas3DControls;
     private String canvas3DLayerName=null;
     private boolean canvas3DVisible=true;
+    private int canvas3DOpacity=100;
     private boolean baseAdjustMode=false;
     private int currentColor = Color.BLACK;
     private float brushSize = 8f;
@@ -622,7 +623,9 @@ public class MainActivity extends Activity {
         canvasAnimeBase=new AnimeBaseView(this,model);
         canvas3DLayerName=name;
         canvas3DVisible=true;
+        canvas3DOpacity=100;
         canvasAnimeBase.setInteractionEnabled(false);
+        canvasAnimeBase.setModelOpacity(1f);
         canvasStage.addView(canvasAnimeBase,new FrameLayout.LayoutParams(-1,-1));
         baseAdjustMode=false;
 
@@ -1188,7 +1191,35 @@ public class MainActivity extends Activity {
                         if(canvasAnimeBase!=null) canvasAnimeBase.setInteractionEnabled(true);
                         Toast.makeText(MainActivity.this,"3D layer selected: drag to rotate, pinch to zoom. Tap Draw when finished.",Toast.LENGTH_SHORT).show();
                     });
+                    LinearLayout opacityRow=new LinearLayout(MainActivity.this);
+                    opacityRow.setGravity(Gravity.CENTER_VERTICAL);
+                    opacityRow.setPadding(dp(10),0,dp(10),dp(5));
+                    TextView opacityTitle=new TextView(MainActivity.this);
+                    opacityTitle.setText("3D opacity");
+                    opacityTitle.setTextSize(12);
+                    opacityTitle.setTextColor(Color.rgb(25,74,112));
+                    opacityRow.addView(opacityTitle,new LinearLayout.LayoutParams(dp(82),dp(38)));
+                    SeekBar opacitySlider=new SeekBar(MainActivity.this);
+                    opacitySlider.setMax(100);
+                    opacitySlider.setProgress(canvas3DOpacity);
+                    opacityRow.addView(opacitySlider,new LinearLayout.LayoutParams(0,dp(38),1));
+                    TextView opacityValue=new TextView(MainActivity.this);
+                    opacityValue.setText(canvas3DOpacity+"%");
+                    opacityValue.setTextSize(12);
+                    opacityValue.setTextColor(Color.rgb(25,74,112));
+                    opacityValue.setGravity(Gravity.CENTER);
+                    opacityRow.addView(opacityValue,new LinearLayout.LayoutParams(dp(42),dp(38)));
+                    opacitySlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+                        @Override public void onProgressChanged(SeekBar bar,int value,boolean fromUser){
+                            canvas3DOpacity=value;
+                            opacityValue.setText(value+"%");
+                            if(canvasAnimeBase!=null) canvasAnimeBase.setModelOpacity(value/100f);
+                        }
+                        @Override public void onStartTrackingTouch(SeekBar bar){}
+                        @Override public void onStopTrackingTouch(SeekBar bar){}
+                    });
                     rows.addView(referenceRow);
+                    rows.addView(opacityRow);
                     View separator=new View(MainActivity.this);
                     separator.setBackgroundColor(Color.rgb(100,160,190));
                     rows.addView(separator,new LinearLayout.LayoutParams(-1,dp(2)));
