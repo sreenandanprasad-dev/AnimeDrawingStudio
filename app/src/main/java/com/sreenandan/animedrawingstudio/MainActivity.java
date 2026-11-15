@@ -658,6 +658,19 @@ public class MainActivity extends Activity {
             modeButton.setText(baseAdjustMode?"Draw":"Adjust");
             Toast.makeText(this,baseAdjustMode?"3D reference adjustment enabled":"Drawing enabled",Toast.LENGTH_SHORT).show();
         });
+        Button applyButton=new Button(this);
+        applyButton.setText("Apply 2D"); applyButton.setTextSize(10); applyButton.setAllCaps(false);
+        controls.addView(applyButton,new LinearLayout.LayoutParams(dp(88),dp(36)));
+        applyButton.setOnClickListener(v->{
+            if(drawingView.apply3DLayer()) {
+                baseAdjustMode=false;
+                modeButton.setText("2D Applied");
+                modeButton.setEnabled(false);
+                applyButton.setEnabled(false);
+                Toast.makeText(this,"3D reference converted to a normal 2D image layer. Layer opacity now controls the whole image.",Toast.LENGTH_LONG).show();
+                refreshLayerPanelIfOpen();
+            }
+        });
         Button removeButton=new Button(this);
         removeButton.setText("×"); removeButton.setTextSize(14); removeButton.setAllCaps(false);
         controls.addView(removeButton,new LinearLayout.LayoutParams(dp(44),dp(36)));
@@ -1899,6 +1912,24 @@ public class MainActivity extends Activity {
         void zoom3DModel(float factor) {
             int index=find3DLayerIndex();
             if(index>=0) { layers.get(index).scene.zoom(factor); invalidate(); }
+        }
+        boolean apply3DLayer() {
+            int index=find3DLayerIndex();
+            if(index<0) return false;
+            Layer layer=layers.get(index);
+            Bitmap flattened=Bitmap.createBitmap(canvasWidth,canvasHeight,Bitmap.Config.ARGB_8888);
+            Canvas imageCanvas=new Canvas(flattened);
+            layer.scene.draw(imageCanvas,new RectF(0,0,canvasWidth,canvasHeight),100);
+            layer.scene=null;
+            if(layer.bitmap!=null&&!layer.bitmap.isRecycled()) layer.bitmap.recycle();
+            layer.bitmap=flattened;
+            layer.opacity=100;
+            layer.blendMode=0;
+            layer.alphaLocked=false;
+            layer.clipToBelow=false;
+            clearHistory();
+            invalidate();
+            return true;
         }
         int getLayerOpacity(int index) { return layers.get(index).opacity; }
         int getLayerBlendMode(int index) { return layers.get(index).blendMode; }
