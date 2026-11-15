@@ -2,6 +2,7 @@ package com.sreenandan.animedrawingstudio;
 
 import android.content.Context;
 import android.opengl.GLSurfaceView;
+import android.graphics.PixelFormat;
 import android.opengl.GLU;
 import android.view.MotionEvent;
 import java.nio.ByteBuffer;
@@ -16,16 +17,26 @@ public class AnimeBaseView extends GLSurfaceView {
     private final BaseRenderer renderer;
     private float lastX,lastY,lastDistance;
     private boolean pinch;
+    private boolean interactionEnabled=true;
 
     public AnimeBaseView(Context context,int model) {
         super(context);
         setEGLContextClientVersion(1);
+        setEGLConfigChooser(8,8,8,8,16,0);
+        getHolder().setFormat(PixelFormat.TRANSLUCENT);
+        setZOrderMediaOverlay(true);
+        setPreserveEGLContextOnPause(true);
         renderer=new BaseRenderer(model);
         setRenderer(renderer);
         setRenderMode(RENDERMODE_CONTINUOUSLY);
     }
 
+    public void setInteractionEnabled(boolean enabled) {
+        interactionEnabled=enabled;
+    }
+
     @Override public boolean onTouchEvent(MotionEvent e) {
+        if(!interactionEnabled) return false;
         int n=e.getPointerCount();
         if(e.getActionMasked()==MotionEvent.ACTION_DOWN) {
             lastX=e.getX(); lastY=e.getY(); pinch=false; return true;
@@ -228,7 +239,7 @@ public class AnimeBaseView extends GLSurfaceView {
         }
 
         @Override public void onSurfaceCreated(GL10 gl,EGLConfig config) {
-            gl.glClearColor(.91f,.97f,.99f,1f);
+            gl.glClearColor(0f,0f,0f,0f);
             gl.glEnable(GL10.GL_DEPTH_TEST);
             gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
             gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
