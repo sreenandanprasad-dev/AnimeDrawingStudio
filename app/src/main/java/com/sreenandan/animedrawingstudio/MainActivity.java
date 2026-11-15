@@ -611,6 +611,30 @@ public class MainActivity extends Activity {
                 .setItems(models,(dialog,which)->addAnimeBaseToCanvas(which,models[which])).show();
     }
 
+    private void updateCanvas3DPlacement() {
+        if(canvasStage==null || canvasAnimeBase==null || drawingView==null) return;
+        int viewWidth=drawingView.getWidth(), viewHeight=drawingView.getHeight();
+        if(viewWidth<=0 || viewHeight<=0) return;
+        float fit=Math.min((float)viewWidth/1600f,(float)viewHeight/newCanvasHeight);
+        float displayScale=fit*drawingView.zoom;
+        int width=Math.max(1,Math.round(newCanvasWidth*displayScale));
+        int height=Math.max(1,Math.round(newCanvasHeight*displayScale));
+        float centerX=viewWidth/2f+drawingView.panX;
+        float centerY=viewHeight/2f+drawingView.panY;
+        int left=Math.round(centerX-width/2f);
+        int top=Math.round(centerY-height/2f);
+        ViewGroup.LayoutParams raw=canvasAnimeBase.getLayoutParams();
+        FrameLayout.LayoutParams lp;
+        if(raw instanceof FrameLayout.LayoutParams) lp=(FrameLayout.LayoutParams)raw;
+        else lp=new FrameLayout.LayoutParams(width,height);
+        boolean changed=lp.width!=width || lp.height!=height || lp.leftMargin!=left || lp.topMargin!=top;
+        lp.width=width; lp.height=height; lp.gravity=Gravity.TOP|Gravity.LEFT;
+        lp.leftMargin=left; lp.topMargin=top;
+        if(changed) canvasAnimeBase.setLayoutParams(lp);
+        if(canvasAnimeBase.getRotation()!=drawingView.rotation)
+            canvasAnimeBase.setRotation(drawingView.rotation);
+    }
+
     private void addAnimeBaseToCanvas(int model,String name) {
         if(canvasStage==null || drawingView==null) {
             Toast.makeText(this,"Open a canvas first",Toast.LENGTH_SHORT).show();
@@ -626,7 +650,8 @@ public class MainActivity extends Activity {
         canvas3DOpacity=100;
         canvasAnimeBase.setInteractionEnabled(false);
         canvasAnimeBase.setModelOpacity(1f);
-        canvasStage.addView(canvasAnimeBase,new FrameLayout.LayoutParams(-1,-1));
+        canvasStage.addView(canvasAnimeBase,new FrameLayout.LayoutParams(1,1));
+        updateCanvas3DPlacement();
         baseAdjustMode=false;
 
         LinearLayout controls=new LinearLayout(this);
@@ -2349,6 +2374,7 @@ public class MainActivity extends Activity {
 
         @Override protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
+            updateCanvas3DPlacement();
             canvas.drawColor(Color.rgb(65,65,70));
             float scale=Math.min((float)getWidth()/1600f,(float)getHeight()/canvasHeight);
             canvas.save();
