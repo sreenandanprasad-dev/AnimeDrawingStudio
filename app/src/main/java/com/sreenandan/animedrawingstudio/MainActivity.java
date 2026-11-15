@@ -668,7 +668,6 @@ public class MainActivity extends Activity {
                 modeButton.setEnabled(false);
                 applyButton.setEnabled(false);
                 Toast.makeText(this,"3D reference converted to a normal 2D image layer. Layer opacity now controls the whole image.",Toast.LENGTH_LONG).show();
-                refreshLayerPanelIfOpen();
             }
         });
         Button removeButton=new Button(this);
