@@ -553,7 +553,8 @@ public class MainActivity extends Activity {
     private void showMoreActions() {
         String[] actions = {"Reset canvas view","Clear selection","Duplicate selection",
                 "Flip selection horizontally","Flip selection vertically","Delete selection",
-                "Select all","Toggle grid","Toggle symmetry","Change canvas background","Grid spacing"};
+                "Select all","Toggle grid","Toggle symmetry","Change canvas background","Grid spacing",
+                "Open 3D model (.obj)"};
         new AlertDialog.Builder(this)
                 .setTitle("Studio tools")
                 .setItems(actions,(dialog,which) -> {
@@ -585,8 +586,54 @@ public class MainActivity extends Activity {
                                         Toast.makeText(this,"Grid spacing: "+spacings[gridChoice]+" px",Toast.LENGTH_SHORT).show();
                                     }).show();
                             break;
+                        case 11:
+                            open3DModel();
+                            break;
                     }
                 }).show();
+    }
+
+    private static final int REQUEST_3D_MODEL = 7401;
+
+    private void open3DModel() {
+        android.content.Intent intent=new android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(android.content.Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.putExtra(android.content.Intent.EXTRA_MIME_TYPES,
+                new String[]{"model/obj","text/plain","application/octet-stream"});
+        startActivityForResult(intent,REQUEST_3D_MODEL);
+    }
+
+    @Override protected void onActivityResult(int requestCode,int resultCode,android.content.Intent data) {
+        super.onActivityResult(requestCode,resultCode,data);
+        if(requestCode!=REQUEST_3D_MODEL || resultCode!=RESULT_OK || data==null || data.getData()==null) return;
+        Uri modelUri=data.getData();
+        try {
+            getContentResolver().takePersistableUriPermission(modelUri,
+                    data.getFlags() & (android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            | android.content.Intent.FLAG_GRANT_WRITE_URI_PERMISSION));
+        } catch(Exception ignored) {}
+        try {
+            ObjModelView modelView=new ObjModelView(this,modelUri);
+            LinearLayout panel=new LinearLayout(this);
+            panel.setOrientation(LinearLayout.VERTICAL);
+            TextView instructions=new TextView(this);
+            instructions.setText("Drag to rotate  •  Pinch to zoom\\nOBJ files supported; materials and textures are not loaded yet.");
+            instructions.setTextColor(Color.rgb(25,74,112));
+            instructions.setPadding(dp(10),dp(8),dp(10),dp(8));
+            panel.addView(instructions);
+            panel.addView(modelView,new LinearLayout.LayoutParams(-1,dp(390)));
+            AlertDialog viewer=new AlertDialog.Builder(this).setTitle("3D Reference")
+                    .setView(panel).setPositiveButton("Close",null).create();
+            viewer.setOnDismissListener(dialog -> modelView.onPause());
+            viewer.show();
+            viewer.getButton(AlertDialog.BUTTON_POSITIVE).setTextColor(Color.rgb(25,100,150));
+            modelView.onResume();
+        } catch(Exception error) {
+            new AlertDialog.Builder(this).setTitle("Could not open 3D model")
+                    .setMessage(error.getMessage()==null?"This OBJ file could not be read.":error.getMessage())
+                    .setPositiveButton("OK",null).show();
+        }
     }
 
     private void showCanvasBackgroundOptions() {
