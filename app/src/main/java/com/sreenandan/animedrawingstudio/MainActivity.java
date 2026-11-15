@@ -24,6 +24,9 @@ public class MainActivity extends Activity {
     private DrawingView drawingView;
     private FrameLayout canvasStage;
     private AnimeBaseView canvasAnimeBase;
+    private View canvas3DControls;
+    private String canvas3DLayerName=null;
+    private boolean canvas3DVisible=true;
     private boolean baseAdjustMode=false;
     private int currentColor = Color.BLACK;
     private float brushSize = 8f;
@@ -617,6 +620,8 @@ public class MainActivity extends Activity {
             canvasStage.removeView(canvasAnimeBase);
         }
         canvasAnimeBase=new AnimeBaseView(this,model);
+        canvas3DLayerName=name;
+        canvas3DVisible=true;
         canvasAnimeBase.setInteractionEnabled(false);
         canvasStage.addView(canvasAnimeBase,new FrameLayout.LayoutParams(-1,-1));
         baseAdjustMode=false;
@@ -645,6 +650,7 @@ public class MainActivity extends Activity {
             if(canvasAnimeBase!=null) {
                 boolean visible=canvasAnimeBase.getVisibility()==View.VISIBLE;
                 canvasAnimeBase.setVisibility(visible?View.INVISIBLE:View.VISIBLE);
+                canvas3DVisible=!visible;
                 hideButton.setText(visible?"Show":"Hide");
             }
         });
@@ -660,11 +666,15 @@ public class MainActivity extends Activity {
                 canvasAnimeBase=null;
             }
             baseAdjustMode=false;
+            canvas3DLayerName=null;
+            canvas3DControls=null;
+            canvas3DVisible=false;
             canvasStage.removeView(controls);
         });
         FrameLayout.LayoutParams controlParams=new FrameLayout.LayoutParams(-2,dp(42),Gravity.TOP|Gravity.CENTER_HORIZONTAL);
         controlParams.topMargin=dp(6);
         canvasStage.addView(controls,controlParams);
+        canvas3DControls=controls;
         canvasAnimeBase.onResume();
         Toast.makeText(this,name+" added as a canvas reference. Choose Adjust to rotate it, then Draw to draw over it.",Toast.LENGTH_LONG).show();
     }
@@ -1143,6 +1153,46 @@ public class MainActivity extends Activity {
         refresh[0] = new Runnable() {
             @Override public void run() {
                 rows.removeAllViews();
+                // 3D references are independent scene layers, never flattened into paint bitmaps.
+                if(canvasAnimeBase!=null) {
+                    LinearLayout referenceRow=new LinearLayout(MainActivity.this);
+                    referenceRow.setGravity(Gravity.CENTER_VERTICAL);
+                    referenceRow.setPadding(dp(8),dp(6),dp(8),dp(6));
+                    referenceRow.setBackground(glassGradient(Color.rgb(238,250,255),Color.rgb(195,230,245),Color.WHITE,dp(8)));
+                    TextView modelIcon=new TextView(MainActivity.this);
+                    modelIcon.setText("◇");
+                    modelIcon.setTextSize(25);
+                    modelIcon.setTextColor(Color.rgb(35,105,155));
+                    referenceRow.addView(modelIcon,new LinearLayout.LayoutParams(dp(42),dp(48)));
+                    TextView modelTitle=new TextView(MainActivity.this);
+                    modelTitle.setText("3D  •  "+(canvas3DLayerName==null?"Anime reference":canvas3DLayerName));
+                    modelTitle.setTextSize(13);
+                    modelTitle.setTextColor(Color.rgb(25,74,112));
+                    modelTitle.setTypeface(Typeface.DEFAULT_BOLD);
+                    referenceRow.addView(modelTitle,new LinearLayout.LayoutParams(0,dp(48),1));
+                    CheckBox modelVisible=new CheckBox(MainActivity.this);
+                    modelVisible.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.rgb(35,105,155)));
+                    modelVisible.setChecked(canvas3DVisible);
+                    modelVisible.setOnCheckedChangeListener((button,checked)->{
+                        canvas3DVisible=checked;
+                        if(canvasAnimeBase!=null) canvasAnimeBase.setVisibility(checked?View.VISIBLE:View.INVISIBLE);
+                    });
+                    referenceRow.addView(modelVisible);
+                    Button adjust3D=new Button(MainActivity.this);
+                    adjust3D.setText("Adjust");
+                    adjust3D.setTextSize(10);
+                    adjust3D.setAllCaps(false);
+                    referenceRow.addView(adjust3D,new LinearLayout.LayoutParams(dp(72),dp(42)));
+                    adjust3D.setOnClickListener(v->{
+                        baseAdjustMode=true;
+                        if(canvasAnimeBase!=null) canvasAnimeBase.setInteractionEnabled(true);
+                        Toast.makeText(MainActivity.this,"3D layer selected: drag to rotate, pinch to zoom. Tap Draw when finished.",Toast.LENGTH_SHORT).show();
+                    });
+                    rows.addView(referenceRow);
+                    View separator=new View(MainActivity.this);
+                    separator.setBackgroundColor(Color.rgb(100,160,190));
+                    rows.addView(separator,new LinearLayout.LayoutParams(-1,dp(2)));
+                }
                 ArrayList<String> names = drawingView.getLayerNames();
                 for (int i=names.size()-1;i>=0;i--) {
                     final int index=i;
