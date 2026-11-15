@@ -1408,8 +1408,8 @@ public class MainActivity extends Activity {
                 copy=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,
                         right-left,bottom-top);
                 saveUndo();
-                int offsetX=(right+24<=1600) ? 24 : (left>=24 ? -24 : 0);
-                int offsetY=(bottom+24<=2200) ? 24 : (top>=24 ? -24 : 0);
+                int offsetX=(right+24<=canvasWidth) ? 24 : (left>=24 ? -24 : 0);
+                int offsetY=(bottom+24<=canvasHeight) ? 24 : (top>=24 ? -24 : 0);
                 Canvas target=new Canvas(layers.get(activeLayer).bitmap);
                 target.drawBitmap(copy,left+offsetX,top+offsetY,null);
                 selectionStartX=left+offsetX;
@@ -1445,8 +1445,8 @@ public class MainActivity extends Activity {
             }
             int left=Math.max(0,(int)Math.floor(Math.min(selectionStartX,selectionEndX)));
             int top=Math.max(0,(int)Math.floor(Math.min(selectionStartY,selectionEndY)));
-            int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
-            int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
+            int right=Math.min(canvasWidth,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
+            int bottom=Math.min(canvasHeight,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
             if(right<=left || bottom<=top) return;
             saveUndo();
             Paint clearPaint=new Paint();
@@ -1472,8 +1472,8 @@ public class MainActivity extends Activity {
             }
             int left=Math.max(0,(int)Math.floor(Math.min(selectionStartX,selectionEndX)));
             int top=Math.max(0,(int)Math.floor(Math.min(selectionStartY,selectionEndY)));
-            int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
-            int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
+            int right=Math.min(canvasWidth,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
+            int bottom=Math.min(canvasHeight,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
             int width=right-left, height=bottom-top;
             if(width<=0 || height<=0) return;
             saveUndo();
@@ -1511,8 +1511,8 @@ public class MainActivity extends Activity {
             if(!movingSelection || movingSelectionBitmap==null) return;
             int width=movingSelectionBitmap.getWidth();
             int height=movingSelectionBitmap.getHeight();
-            int destX=Math.max(0,Math.min(1600-width,Math.round(selectionBitmapLeft+selectionMoveDX)));
-            int destY=Math.max(0,Math.min(2200-height,Math.round(selectionBitmapTop+selectionMoveDY)));
+            int destX=Math.max(0,Math.min(canvasWidth-width,Math.round(selectionBitmapLeft+selectionMoveDX)));
+            int destY=Math.max(0,Math.min(canvasHeight-height,Math.round(selectionBitmapTop+selectionMoveDY)));
             Bitmap destinationBefore=null;
             try {
                 destinationBefore=Bitmap.createBitmap(layers.get(activeLayer).bitmap,destX,destY,width,height);
@@ -1660,7 +1660,7 @@ public class MainActivity extends Activity {
 
         // Clip the layer to the alpha of the layer immediately beneath it.
         private void drawLayerStack(Canvas target) {
-            RectF bounds=new RectF(0,0,1600,2200);
+            RectF bounds=new RectF(0,0,canvasWidth,canvasHeight);
             Paint clipMask=new Paint(Paint.ANTI_ALIAS_FLAG);
             clipMask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
             for(int i=0;i<layers.size();i++) {
@@ -1805,7 +1805,7 @@ public class MainActivity extends Activity {
                 drawContent.run();
                 return;
             }
-            int save=target.saveLayer(0,0,1600,2200,null);
+            int save=target.saveLayer(0,0,canvasWidth,canvasHeight,null);
             drawContent.run();
             Paint mask=new Paint(Paint.ANTI_ALIAS_FLAG);
             mask.setXfermode(new PorterDuffXfermode(PorterDuff.Mode.DST_IN));
@@ -1924,7 +1924,7 @@ public class MainActivity extends Activity {
                 Toast.makeText(MainActivity.this,"Selected layer is hidden",Toast.LENGTH_SHORT).show();
                 return;
             }
-            final int width=1600, height=2200, total=width*height;
+            final int width=canvasWidth, height=canvasHeight, total=width*height;
             startX=Math.max(0,Math.min(width-1,startX));
             startY=Math.max(0,Math.min(height-1,startY));
             Bitmap composite=exportBitmap();
@@ -2017,7 +2017,7 @@ public class MainActivity extends Activity {
             invalidate();
         }
         Bitmap exportBitmap() {
-            Bitmap merged=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
+            Bitmap merged=Bitmap.createBitmap(canvasWidth,canvasHeight,Bitmap.Config.ARGB_8888);
             Canvas c=new Canvas(merged);
             if(canvasBackground!=Color.TRANSPARENT) c.drawColor(canvasBackground);
             drawLayerStack(c);
@@ -2035,7 +2035,7 @@ public class MainActivity extends Activity {
             canvas.translate(-(canvasWidth/2f),-(canvasHeight/2f));
             Paint background=new Paint();
             background.setColor(Color.WHITE);
-            canvas.drawRect(0,0,1600,2200,background);
+            if(canvasBackground!=Color.TRANSPARENT) canvas.drawRect(0,0,canvasWidth,canvasHeight,background);
             drawLayerStack(canvas);
             if(movingSelection && movingSelectionBitmap!=null) {
                 canvas.drawBitmap(movingSelectionBitmap,
@@ -2078,15 +2078,15 @@ public class MainActivity extends Activity {
                 Paint gridPaint = new Paint();
                 gridPaint.setColor(Color.argb(42,70,110,150));
                 gridPaint.setStrokeWidth(1f/(scale*zoom));
-                for (int gx=100;gx<1600;gx+=100) canvas.drawLine(gx,0,gx,2200,gridPaint);
-                for (int gy=100;gy<2200;gy+=100) canvas.drawLine(0,gy,1600,gy,gridPaint);
+                for (int gx=100;gx<canvasWidth;gx+=100) canvas.drawLine(gx,0,gx,canvasHeight,gridPaint);
+                for (int gy=100;gy<canvasHeight;gy+=100) canvas.drawLine(0,gy,canvasWidth,gy,gridPaint);
             }
             if (symmetryEnabled) {
                 Paint axis = new Paint(Paint.ANTI_ALIAS_FLAG);
                 axis.setColor(Color.rgb(40,120,220));
                 axis.setStrokeWidth(2f / (scale*zoom));
                 axis.setPathEffect(new DashPathEffect(new float[]{12f/(scale*zoom),8f/(scale*zoom)},0));
-                canvas.drawLine(800f,0f,800f,2200f,axis);
+                canvas.drawLine((canvasWidth/2f),0f,(canvasWidth/2f),2200f,axis);
             }
             canvas.restore();
             if(eyedropperTool && pickerPreviewVisible) {
@@ -2121,8 +2121,8 @@ public class MainActivity extends Activity {
             float dx=event.getX()-getWidth()/2f-panX;
             float dy=event.getY()-getHeight()/2f-panY;
             double radians=Math.toRadians(-rotation);
-            float x=(float)(Math.cos(radians)*dx-Math.sin(radians)*dy)/scale+800f;
-            float y=(float)(Math.sin(radians)*dx+Math.cos(radians)*dy)/scale+1100f;
+            float x=(float)(Math.cos(radians)*dx-Math.sin(radians)*dy)/scale+(canvasWidth/2f);
+            float y=(float)(Math.sin(radians)*dx+Math.cos(radians)*dy)/scale+(canvasHeight/2f);
 
             switch(event.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
@@ -2143,8 +2143,8 @@ public class MainActivity extends Activity {
                             }
                             int left=Math.max(0,(int)Math.floor(Math.min(selectionStartX,selectionEndX)));
                             int top=Math.max(0,(int)Math.floor(Math.min(selectionStartY,selectionEndY)));
-                            int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
-                            int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
+                            int right=Math.min(canvasWidth,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
+                            int bottom=Math.min(canvasHeight,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
                             if(right>left && bottom>top) {
                                 try {
                                     movingSelectionBitmap=Bitmap.createBitmap(layers.get(activeLayer).bitmap,left,top,right-left,bottom-top);
@@ -2183,7 +2183,7 @@ public class MainActivity extends Activity {
                         return true;
                     }
                     if (eyedropperTool) {
-                        if (x>=0 && y>=0 && x<1600 && y<2200) {
+                        if (x>=0 && y>=0 && x<canvasWidth && y<canvasHeight) {
                             pickerPreviewX=event.getX();
                             pickerPreviewY=event.getY();
                             pickerPreviewColor=sampleCompositePixel(Math.max(0,Math.min(1599,(int)x)),
@@ -2194,12 +2194,12 @@ public class MainActivity extends Activity {
                         return true;
                     }
                     if (bucketTool) {
-                        pendingBucketFill=(x>=0 && y>=0 && x<1600 && y<2200);
+                        pendingBucketFill=(x>=0 && y>=0 && x<canvasWidth && y<canvasHeight);
                         pendingFillX=Math.max(0,Math.min(1599,Math.round(x)));
                         pendingFillY=Math.max(0,Math.min(2199,Math.round(y)));
                         return true;
                     }
-                    drawingGesture=(x>=0 && y>=0 && x<=1600 && y<=2200);
+                    drawingGesture=(x>=0 && y>=0 && x<=canvasWidth && y<=canvasHeight);
                     if (!drawingGesture) return true;
                     if (!layers.get(activeLayer).visible) {
                         Toast.makeText(MainActivity.this,"Selected layer is hidden",Toast.LENGTH_SHORT).show();
@@ -2266,7 +2266,7 @@ public class MainActivity extends Activity {
                     if(eyedropperTool && event.getPointerCount()==1) {
                         pickerPreviewX=event.getX();
                         pickerPreviewY=event.getY();
-                        if(x>=0 && y>=0 && x<1600 && y<2200) {
+                        if(x>=0 && y>=0 && x<canvasWidth && y<canvasHeight) {
                             pickerPreviewColor=sampleCompositePixel(Math.max(0,Math.min(1599,(int)x)),
                                     Math.max(0,Math.min(2199,(int)y)));
                             pickerPreviewVisible=true;
@@ -2412,7 +2412,7 @@ public class MainActivity extends Activity {
                     // A pending bucket tap must be handled before floating-selection
                     // completion; otherwise stale selection state can swallow the tap.
                     if (pendingBucketFill) {
-                        if (!multiTouch && x>=0 && y>=0 && x<1600 && y<2200) {
+                        if (!multiTouch && x>=0 && y>=0 && x<canvasWidth && y<canvasHeight) {
                             fillAt(Math.max(0,Math.min(1599,Math.round(x))),
                                     Math.max(0,Math.min(2199,Math.round(y))));
                         }
