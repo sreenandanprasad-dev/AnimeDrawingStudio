@@ -202,81 +202,101 @@ public final class AnimeBaseScene {
 
         private static Mesh build(int model) {
             Mesh m=new Mesh();
-            int skin=0xFFFFC69F, shade=0xFFE9A77F, hair=0xFF26364D, hair2=0xFF405A7A;
-            int top=0xFF42A9D5, topShade=0xFF2479B2, bottom=0xFF354C75, shoe=0xFF26364D;
-            int white=0xFFFFF8F1, iris=0xFF55A8D8, pupil=0xFF172D4C;
-            // Head silhouette: broad cranium tapering through cheeks into a manga chin.
+            int skin=0xFFFFEBDD, skinShade=0xFFE8D3C3, joint=0xFFC96F72;
+            int white=0xFFFFF8F1;
+
+            // Smooth bald anime mannequin head: rounded cranium, tapered jaw and chin.
             float[][] head={
-                {0,1.18f,0,.115f,.11f,.13f},{0,1.25f,0,.205f,.16f,.19f},
-                {0,1.36f,0,.255f,.22f,.225f},{0,1.49f,0,.275f,.25f,.235f},
-                {0,1.62f,-.005f,.27f,.24f,.23f},{0,1.72f,-.015f,.20f,.18f,.18f},
-                {0,1.77f,-.015f,.08f,.08f,.08f}};
-            m.loft(head,24,skin);
-            // Neck and unified torso silhouette with shoulders, ribcage, waist and pelvis.
-            m.tube(new float[]{0,1.08f,0},new float[]{0,1.24f,0},.075f,.085f,skin);
+                {0,1.17f,0,.105f,.10f,.105f},
+                {0,1.22f,0,.17f,.14f,.15f},
+                {0,1.31f,0,.225f,.19f,.19f},
+                {0,1.42f,0,.255f,.22f,.215f},
+                {0,1.55f,-.005f,.26f,.23f,.22f},
+                {0,1.67f,-.012f,.225f,.20f,.195f},
+                {0,1.74f,-.012f,.14f,.13f,.13f},
+                {0,1.77f,-.012f,.035f,.04f,.04f}
+            };
+            m.loft(head,32,skin);
+
+            // Small ears, kept simple like the supplied construction mannequin.
+            for(int side=0;side<2;side++){
+                float s=side==0?-1:1;
+                m.tube(new float[]{s*.245f,1.39f,0},new float[]{s*.275f,1.43f,0},.035f,.026f,skin);
+            }
+
+            // Neck blends into the shoulder line.
+            m.tube(new float[]{0,1.04f,0},new float[]{0,1.25f,0},.078f,.082f,skin);
+
+            // Bare, neutral anatomy mannequin torso: broad shoulder/rib cage,
+            // gently narrowed waist and a smooth pelvis silhouette.
             float[][] torso={
-                {0,.34f,0,.20f,.15f,.16f},{0,.43f,0,.29f,.19f,.19f},
-                {0,.58f,0,.255f,.18f,.18f},{0,.72f,0,.205f,.17f,.16f},
-                {0,.88f,0,.255f,.19f,.17f},{0,1.00f,0,.31f,.18f,.16f},
-                {0,1.08f,0,.22f,.14f,.13f}};
-            m.loft(torso,24,top);
-            // Pelvis and clothing form one broad manga mannequin base.
-            float[][] pelvis={{0,.18f,0,.19f,.14f,.15f},{0,.25f,0,.28f,.17f,.18f},{0,.40f,0,.29f,.18f,.18f}};
-            m.loft(pelvis,24,bottom);
-            // Face details are shallow graphic forms on the front plane.
-            for(int side=0;side<2;side++){
-                float x=side==0?-.105f:.105f;
-                m.almond(x,1.405f,.224f,.078f,.045f,white);
-                m.almond(x,1.405f,.229f,.039f,.041f,iris);
-                m.almond(x,1.402f,.233f,.020f,.032f,pupil);
-                m.almond(x-.012f,1.422f,.237f,.010f,.012f,white);
-                m.tube(new float[]{x-.075f,1.47f,.226f},new float[]{x+.065f,1.47f,.226f},.012f,.009f,hair);
-                m.tube(new float[]{side==0?-.27f:.27f,1.37f,0},new float[]{side==0?-.25f:.25f,1.48f,0},.035f,.035f,shade);
-            }
-            m.tube(new float[]{0,1.36f,.235f},new float[]{0,1.33f,.247f},.012f,.006f,shade);
-            m.tube(new float[]{-.025f,1.285f,.221f},new float[]{.025f,1.285f,.221f},.006f,.006f,0xFF9D5360);
-            // Hair cap and tapered locks; deliberately graphic, with pointed fringe.
-            float[][] cap={{0,1.51f,-.01f,.26f,.22f,.23f},{0,1.62f,-.01f,.28f,.20f,.24f},{0,1.72f,-.01f,.22f,.16f,.20f},{0,1.78f,-.01f,.06f,.06f,.07f}};
-            m.loft(cap,24,hair);
-            m.tube(new float[]{-.20f,1.62f,.16f},new float[]{-.10f,1.40f,.22f},.07f,.008f,hair2);
-            m.tube(new float[]{-.06f,1.68f,.20f},new float[]{.015f,1.40f,.24f},.065f,.008f,hair);
-            m.tube(new float[]{.12f,1.65f,.17f},new float[]{.10f,1.42f,.23f},.065f,.008f,hair2);
-            m.tube(new float[]{-.25f,1.55f,-.02f},new float[]{-.24f,1.22f,-.015f},.065f,.012f,hair);
-            m.tube(new float[]{.25f,1.55f,-.02f},new float[]{.24f,1.22f,-.015f},.065f,.012f,hair);
-            // Collar and simple garment seams.
-            m.tube(new float[]{-.17f,1.00f,.12f},new float[]{0,.88f,.19f},.025f,.008f,white);
-            m.tube(new float[]{.17f,1.00f,.12f},new float[]{0,.88f,.19f},.025f,.008f,white);
-            m.almond(0,.88f,.205f,.035f,.05f,0xFFE45C75);
-            // Arms are tapered, curved surface tubes with softly changing widths.
+                {0,.20f,0,.245f,.18f,.17f},
+                {0,.28f,0,.285f,.19f,.18f},
+                {0,.39f,0,.275f,.185f,.18f},
+                {0,.49f,0,.225f,.16f,.16f},
+                {0,.61f,0,.185f,.145f,.145f},
+                {0,.72f,0,.205f,.16f,.15f},
+                {0,.84f,0,.245f,.18f,.16f},
+                {0,.96f,0,.305f,.18f,.16f},
+                {0,1.035f,0,.245f,.15f,.14f},
+                {0,1.08f,0,.15f,.12f,.12f}
+            };
+            m.loft(torso,32,skin);
+
+            // Subtle clavicle and shoulder contours, not clothing seams.
+            m.tube(new float[]{-.235f,.99f,.105f},new float[]{0,.94f,.155f},.009f,.006f,skinShade);
+            m.tube(new float[]{.235f,.99f,.105f},new float[]{0,.94f,.155f},.009f,.006f,skinShade);
+
+            // Arms follow a natural slight inward curve; each is one continuous surface.
             for(int side=0;side<2;side++){
                 float s=side==0?-1:1;
-                float[] shoulder={s*.27f,.96f,0};
-                float[] elbow=model==1?new float[]{s*.58f,.94f,0}:model==2?new float[]{s*.49f,.62f,.02f}:new float[]{s*.50f,.66f,0};
-                float[] wrist=model==1?new float[]{s*.87f,.94f,0}:model==2?new float[]{s*.40f,.34f,.08f}:new float[]{s*.66f,.31f,.03f};
-                // One continuous arm surface through shoulder, elbow and wrist.
-                float[] midArm={(shoulder[0]+elbow[0])*.5f,(shoulder[1]+elbow[1])*.5f,(shoulder[2]+elbow[2])*.5f};
-                m.tubePath(new float[][]{shoulder,elbow,wrist},new float[]{.105f,.068f,.043f},16,skin);
-                // Short sleeve overlays the upper arm while keeping the limb underneath continuous.
-                m.tube(shoulder,midArm,.112f,.073f,top);
-                float hx=wrist[0],hy=wrist[1]-.035f,hz=wrist[2]+.015f;
-                // Palm plus individually tapered fingers and an angled thumb.
-                m.tube(new float[]{hx,hy+.035f,hz},new float[]{hx,hy-.045f,hz+.01f},.052f,.043f,skin);
-                for(int f=0;f<4;f++){
-                    float fx=hx+s*((f-1.5f)*.024f);
-                    m.tube(new float[]{fx,hy-.025f,hz+.012f},new float[]{fx+s*.004f,hy-.105f-(f==1||f==2?.012f:0),hz+.015f},.014f,.006f,skin);
+                float[] shoulder={s*.285f,.94f,0};
+                float[] upperMid={s*.39f,.79f,.005f};
+                float[] elbow=model==1?new float[]{s*.57f,.91f,0}:model==2?new float[]{s*.49f,.62f,.02f}:new float[]{s*.48f,.62f,0};
+                float[] foreMid={model==1?s*.69f:.0f,model==1?.91f:.45f,.015f};
+                float[] wrist=model==1?new float[]{s*.82f,.88f,0}:model==2?new float[]{s*.40f,.34f,.08f}:new float[]{s*.65f,.30f,.025f};
+                m.tubePath(new float[][]{shoulder,upperMid,elbow,foreMid,wrist},
+                    new float[]{.105f,.091f,.067f,.055f,.038f},20,skin);
+
+                // Palm and individually tapered fingers, simplified for posing reference.
+                float hx=wrist[0],hy=wrist[1]-.035f,hz=wrist[2]+.012f;
+                m.tube(new float[]{hx,hy+.035f,hz},new float[]{hx,hy-.045f,hz+.012f},.048f,.038f,skin);
+                for(int finger=0;finger<4;finger++){
+                    float fx=hx+s*((finger-1.5f)*.022f);
+                    float length=(finger==1||finger==2)?.105f:.088f;
+                    m.tube(new float[]{fx,hy-.025f,hz+.014f},
+                        new float[]{fx+s*.003f,hy-length,hz+.016f},.012f,.005f,skin);
                 }
-                m.tube(new float[]{hx-s*.04f,hy+.005f,hz},new float[]{hx-s*.085f,hy-.045f,hz+.02f},.018f,.007f,skin);
+                m.tube(new float[]{hx-s*.035f,hy+.005f,hz},
+                    new float[]{hx-s*.075f,hy-.045f,hz+.02f},.016f,.006f,skin);
             }
-            // Legs: continuous tapered thigh-to-calf contours, ankles and wedge-shaped feet.
+
+            // Legs use a continuous tapered silhouette with shaped thighs and calves.
             for(int side=0;side<2;side++){
                 float s=side==0?-1:1;
-                float[] hip={s*.15f,.27f,0};
-                float[] knee=model==2?new float[]{s*.43f,-.15f,.10f}:new float[]{s*.18f,-.28f,0};
+                float[] hip={s*.155f,.25f,0};
+                float[] thighMid={s*.18f,-.015f,.005f};
+                float[] knee=model==2?new float[]{s*.40f,-.15f,.10f}:new float[]{s*.18f,-.30f,0};
+                float[] calfMid=model==2?new float[]{s*.45f,-.32f,.11f}:new float[]{s*.19f,-.59f,.015f};
                 float[] ankle=model==2?new float[]{s*.48f,-.48f,.12f}:new float[]{s*.19f,-.91f,.015f};
-                float[] toe=model==2?new float[]{s*.48f,-.54f,.20f}:new float[]{s*.19f,-.99f,.10f};
-                // Continuous thigh-to-calf surface removes the visible knee seam.
-                m.tubePath(new float[][]{hip,knee,ankle},new float[]{.125f,.085f,.052f},16,skin);
-                m.tube(ankle,toe,.055f,.035f,shoe);
+                m.tubePath(new float[][]{hip,thighMid,knee,calfMid,ankle},
+                    new float[]{.145f,.132f,.085f,.073f,.047f},20,skin);
+
+                // Simple foot volume and arch, with no shoe overlay.
+                float[] heel={ankle[0],ankle[1]-.035f,ankle[2]+.015f};
+                float[] toe=model==2?new float[]{s*.48f,-.54f,.22f}:new float[]{s*.19f,-.985f,.13f};
+                m.tube(heel,toe,.052f,.035f,skin);
+            }
+
+            // Small, unobtrusive joint markers indicate the pose pivot locations.
+            for(int side=0;side<2;side++){
+                float s=side==0?-1:1;
+                float[] shoulder={s*.285f,.94f,.105f};
+                float[] elbow=model==1?new float[]{s*.57f,.91f,.065f}:model==2?new float[]{s*.49f,.62f,.085f}:new float[]{s*.48f,.62f,.065f};
+                float[] wrist=model==1?new float[]{s*.82f,.88f,.045f}:model==2?new float[]{s*.40f,.34f,.12f}:new float[]{s*.65f,.30f,.065f};
+                m.almond(shoulder[0],shoulder[1],shoulder[2],.018f,.018f,joint);
+                m.almond(elbow[0],elbow[1],elbow[2],.014f,.014f,joint);
+                m.almond(wrist[0],wrist[1],wrist[2],.012f,.012f,joint);
             }
             return m;
         }
