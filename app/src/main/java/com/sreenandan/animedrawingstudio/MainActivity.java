@@ -503,7 +503,7 @@ public class MainActivity extends Activity {
     private void showMoreActions() {
         String[] actions = {"Reset canvas view","Clear selection","Duplicate selection",
                 "Flip selection horizontally","Flip selection vertically","Delete selection",
-                "Select all","Toggle grid","Toggle symmetry"};
+                "Select all","Toggle grid","Toggle symmetry","Change canvas background"};
         new AlertDialog.Builder(this)
                 .setTitle("Studio tools")
                 .setItems(actions,(dialog,which) -> {
@@ -522,6 +522,14 @@ public class MainActivity extends Activity {
                         case 8:
                             drawingView.setSymmetryEnabled(!drawingView.isSymmetryEnabled());
                             Toast.makeText(this,drawingView.isSymmetryEnabled()?"Symmetry on":"Symmetry off",Toast.LENGTH_SHORT).show();
+                            break;
+                        case 9:
+                            int background=drawingView.getCanvasBackground();
+                            showColorWheel(background==Color.TRANSPARENT?Color.WHITE:background,false,
+                                    color -> {
+                                        drawingView.setCanvasBackground(color);
+                                        Toast.makeText(this,"Canvas background changed",Toast.LENGTH_SHORT).show();
+                                    });
                             break;
                     }
                 }).show();
@@ -1206,7 +1214,7 @@ public class MainActivity extends Activity {
     private class DrawingView extends View {
         private final int canvasWidth;
         private final int canvasHeight;
-        private final int canvasBackground;
+        private int canvasBackground;
         private class Layer {
             Bitmap bitmap;
             String name;
@@ -2023,6 +2031,13 @@ public class MainActivity extends Activity {
             c.drawColor(Color.TRANSPARENT,PorterDuff.Mode.CLEAR);
             invalidate();
         }
+        int getCanvasBackground() { return canvasBackground; }
+
+        void setCanvasBackground(int color) {
+            canvasBackground=color;
+            invalidate();
+        }
+
         Bitmap exportBitmap() {
             Bitmap merged=Bitmap.createBitmap(canvasWidth,canvasHeight,Bitmap.Config.ARGB_8888);
             Canvas c=new Canvas(merged);
