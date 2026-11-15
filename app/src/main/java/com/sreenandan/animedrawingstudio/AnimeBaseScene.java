@@ -5,6 +5,7 @@ import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
 import java.util.Arrays;
+import java.util.ArrayList;
 
 /**
  * Editable vector scene for an anime drawing reference.
