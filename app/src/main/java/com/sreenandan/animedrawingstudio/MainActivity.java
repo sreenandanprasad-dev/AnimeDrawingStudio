@@ -2041,7 +2041,7 @@ public class MainActivity extends Activity {
             canvas.scale(scale*zoom,scale*zoom);
             canvas.translate(-(canvasWidth/2f),-(canvasHeight/2f));
             Paint background=new Paint();
-            background.setColor(Color.WHITE);
+            background.setColor(canvasBackground);
             if(canvasBackground!=Color.TRANSPARENT) canvas.drawRect(0,0,canvasWidth,canvasHeight,background);
             drawLayerStack(canvas);
             if(movingSelection && movingSelectionBitmap!=null) {
