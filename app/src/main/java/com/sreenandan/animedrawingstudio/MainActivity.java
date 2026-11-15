@@ -2073,6 +2073,20 @@ public class MainActivity extends Activity {
             background.setColor(canvasBackground);
             if(canvasBackground!=Color.TRANSPARENT) canvas.drawRect(0,0,canvasWidth,canvasHeight,background);
             drawLayerStack(canvas);
+            // Editor-only canvas boundary: visible on transparent canvases,
+            // but never included in the merged/exported PNG.
+            if(canvasBackground==Color.TRANSPARENT) {
+                Paint boundary=new Paint(Paint.ANTI_ALIAS_FLAG);
+                boundary.setStyle(Paint.Style.STROKE);
+                boundary.setColor(Color.WHITE);
+                boundary.setAlpha(230);
+                boundary.setStrokeWidth(5f);
+                canvas.drawRect(1.5f,1.5f,canvasWidth-1.5f,canvasHeight-1.5f,boundary);
+                boundary.setColor(Color.BLACK);
+                boundary.setAlpha(190);
+                boundary.setStrokeWidth(1.5f);
+                canvas.drawRect(1.5f,1.5f,canvasWidth-1.5f,canvasHeight-1.5f,boundary);
+            }
             if(movingSelection && movingSelectionBitmap!=null) {
                 canvas.drawBitmap(movingSelectionBitmap,
                         selectionBitmapLeft+selectionMoveDX,selectionBitmapTop+selectionMoveDY,null);
