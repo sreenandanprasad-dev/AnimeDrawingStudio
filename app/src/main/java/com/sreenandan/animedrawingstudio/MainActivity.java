@@ -22,6 +22,9 @@ import java.util.ArrayList;
 
 public class MainActivity extends Activity {
     private DrawingView drawingView;
+    private FrameLayout canvasStage;
+    private AnimeBaseView canvasAnimeBase;
+    private boolean baseAdjustMode=false;
     private int currentColor = Color.BLACK;
     private float brushSize = 8f;
     private int brushOpacity = 100;
@@ -507,7 +510,9 @@ public class MainActivity extends Activity {
         workspace.setOrientation(LinearLayout.HORIZONTAL);
         workspace.setBackground(glassGradient(Color.rgb(223,247,250),Color.rgb(177,221,231),Color.rgb(255,255,255),dp(0)));
         workspace.addView(toolRow,new LinearLayout.LayoutParams(dp(56),-1));
-        workspace.addView(drawingView,new LinearLayout.LayoutParams(0,-1,1));
+        canvasStage=new FrameLayout(this);
+        canvasStage.addView(drawingView,new FrameLayout.LayoutParams(-1,-1));
+        workspace.addView(canvasStage,new LinearLayout.LayoutParams(0,-1,1));
         root.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
         root.addView(tools,new LinearLayout.LayoutParams(-1,132));
 
@@ -599,7 +604,69 @@ public class MainActivity extends Activity {
     private void showBuiltInAnimeBases() {
         String[] models={"Standing anime base","T-pose reference base","Seated anime base"};
         new AlertDialog.Builder(this).setTitle("Anime Base Model Library")
-                .setItems(models,(dialog,which)->showAnimeBaseViewer(which,models[which])).show();
+                .setItems(models,(dialog,which)->addAnimeBaseToCanvas(which,models[which])).show();
+    }
+
+    private void addAnimeBaseToCanvas(int model,String name) {
+        if(canvasStage==null || drawingView==null) {
+            Toast.makeText(this,"Open a canvas first",Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if(canvasAnimeBase!=null) {
+            canvasAnimeBase.onPause();
+            canvasStage.removeView(canvasAnimeBase);
+        }
+        canvasAnimeBase=new AnimeBaseView(this,model);
+        canvasAnimeBase.setInteractionEnabled(false);
+        canvasStage.addView(canvasAnimeBase,new FrameLayout.LayoutParams(-1,-1));
+        baseAdjustMode=false;
+
+        LinearLayout controls=new LinearLayout(this);
+        controls.setGravity(Gravity.CENTER);
+        controls.setPadding(dp(5),dp(3),dp(5),dp(3));
+        controls.setBackground(glassGradient(Color.WHITE,Color.rgb(178,220,240),Color.WHITE,dp(12)));
+        Button modeButton=new Button(this);
+        modeButton.setText("Adjust");
+        modeButton.setTextSize(10);
+        modeButton.setAllCaps(false);
+        controls.addView(modeButton,new LinearLayout.LayoutParams(dp(76),dp(36)));
+        modeButton.setOnClickListener(v->{
+            baseAdjustMode=!baseAdjustMode;
+            if(canvasAnimeBase!=null) canvasAnimeBase.setInteractionEnabled(baseAdjustMode);
+            modeButton.setText(baseAdjustMode?"Draw":"Adjust");
+            Toast.makeText(this,baseAdjustMode?"3D reference adjustment enabled":"Drawing enabled",Toast.LENGTH_SHORT).show();
+        });
+        Button hideButton=new Button(this);
+        hideButton.setText("Hide");
+        hideButton.setTextSize(10);
+        hideButton.setAllCaps(false);
+        controls.addView(hideButton,new LinearLayout.LayoutParams(dp(68),dp(36)));
+        hideButton.setOnClickListener(v->{
+            if(canvasAnimeBase!=null) {
+                boolean visible=canvasAnimeBase.getVisibility()==View.VISIBLE;
+                canvasAnimeBase.setVisibility(visible?View.INVISIBLE:View.VISIBLE);
+                hideButton.setText(visible?"Show":"Hide");
+            }
+        });
+        Button removeButton=new Button(this);
+        removeButton.setText("×");
+        removeButton.setTextSize(14);
+        removeButton.setAllCaps(false);
+        controls.addView(removeButton,new LinearLayout.LayoutParams(dp(44),dp(36)));
+        removeButton.setOnClickListener(v->{
+            if(canvasAnimeBase!=null) {
+                canvasAnimeBase.onPause();
+                canvasStage.removeView(canvasAnimeBase);
+                canvasAnimeBase=null;
+            }
+            baseAdjustMode=false;
+            canvasStage.removeView(controls);
+        });
+        FrameLayout.LayoutParams controlParams=new FrameLayout.LayoutParams(-2,dp(42),Gravity.TOP|Gravity.CENTER_HORIZONTAL);
+        controlParams.topMargin=dp(6);
+        canvasStage.addView(controls,controlParams);
+        canvasAnimeBase.onResume();
+        Toast.makeText(this,name+" added as a canvas reference. Choose Adjust to rotate it, then Draw to draw over it.",Toast.LENGTH_LONG).show();
     }
 
     private void showAnimeBaseViewer(int model,String name) {
