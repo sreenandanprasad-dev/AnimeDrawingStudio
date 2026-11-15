@@ -721,6 +721,15 @@ public class MainActivity extends Activity {
                         v.startDrag(data,new View.DragShadowBuilder(layerCard),layerCard,0);
                         return true;
                     });
+                    ImageView thumbnail = new ImageView(MainActivity.this);
+                    Bitmap layerPreview = drawingView.getLayerThumbnail(i);
+                    thumbnail.setImageBitmap(layerPreview);
+                    thumbnail.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                    thumbnail.setBackground(glassGradient(Color.WHITE,Color.rgb(225,244,250),Color.rgb(160,205,225),dp(5)));
+                    LinearLayout.LayoutParams thumbParams = new LinearLayout.LayoutParams(dp(42),dp(52));
+                    thumbParams.setMargins(dp(3),dp(2),dp(7),dp(2));
+                    row.addView(thumbnail,thumbParams);
+
                     TextView select = new TextView(MainActivity.this);
                     select.setText((drawingView.getActiveLayer()==i ? "● " : "○ ") + names.get(i));
                     select.setTextSize(16);
@@ -1356,6 +1365,24 @@ public class MainActivity extends Activity {
             ArrayList<String> result=new ArrayList<>();
             for (Layer layer:layers) result.add(layer.name);
             return result;
+        }
+        Bitmap getLayerThumbnail(int index) {
+            if(index<0 || index>=layers.size()) return null;
+            Bitmap source=layers.get(index).bitmap;
+            int width=72, height=99;
+            Bitmap preview=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+            Canvas canvas=new Canvas(preview);
+            Paint checker=new Paint(Paint.ANTI_ALIAS_FLAG);
+            checker.setColor(Color.rgb(238,246,250));
+            canvas.drawColor(Color.WHITE);
+            checker.setColor(Color.rgb(225,237,243));
+            for(int y=0;y<height;y+=12) for(int x=0;x<width;x+=12)
+                if(((x/12)+(y/12))%2==0) canvas.drawRect(x,y,x+12,y+12,checker);
+            Paint imagePaint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
+            Rect src=new Rect(0,0,source.getWidth(),source.getHeight());
+            Rect dst=new Rect(0,0,width,height);
+            canvas.drawBitmap(source,src,dst,imagePaint);
+            return preview;
         }
         int getActiveLayer() { return activeLayer; }
         String getActiveLayerName() { return layers.get(activeLayer).name; }
