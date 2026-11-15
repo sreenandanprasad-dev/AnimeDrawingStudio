@@ -103,47 +103,37 @@ public class MainActivity extends Activity {
         toolRow.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         toolRow.setPadding(3,4,3,4);
         toolRow.setBackground(glassGradient(Color.rgb(255,255,255),Color.rgb(178,222,239),Color.rgb(255,255,255),dp(12)));
-        LinearLayout toolRow1 = new LinearLayout(this);
-        LinearLayout toolRow2 = new LinearLayout(this);
-        LinearLayout toolRow3 = new LinearLayout(this);
-        LinearLayout toolRow4 = new LinearLayout(this);
-        LinearLayout[] iconRows = {toolRow1,toolRow2,toolRow3,toolRow4};
-        for (LinearLayout iconRow : iconRows) {
-            iconRow.setOrientation(LinearLayout.HORIZONTAL);
-            iconRow.setGravity(Gravity.CENTER);
-            toolRow.addView(iconRow,new LinearLayout.LayoutParams(-1,dp(40)));
-        }
-        brushToolButton = addButton(toolRow1, "✎", () -> {
+        brushToolButton = addButton(toolRow, "✎", () -> {
             drawingView.setEyedropper(false);
             drawingView.setEraser(false);
             setActiveTool("BRUSH");
         });
-        eraserToolButton = addButton(toolRow1, "▰", () -> {
+        eraserToolButton = addButton(toolRow, "▰", () -> {
             drawingView.setEyedropper(false);
             drawingView.setEraser(true);
             setActiveTool("ERASER");
         });
-        fillToolButton = addButton(toolRow2, "▧", () -> {
+        fillToolButton = addButton(toolRow, "▧", () -> {
             drawingView.setEyedropper(false);
             drawingView.setBucketTool(true);
             setActiveTool("FILL");
         });
-        lineToolButton = addButton(toolRow2, "╱", () -> {
+        lineToolButton = addButton(toolRow, "╱", () -> {
             drawingView.setEyedropper(false);
             drawingView.setShapeTool(1);
             setActiveTool("LINE");
         });
-        rectToolButton = addButton(toolRow3, "□", () -> {
+        rectToolButton = addButton(toolRow, "□", () -> {
             drawingView.setEyedropper(false);
             drawingView.setShapeTool(2);
             setActiveTool("RECT");
         });
-        ellipseToolButton = addButton(toolRow3, "○", () -> {
+        ellipseToolButton = addButton(toolRow, "○", () -> {
             drawingView.setEyedropper(false);
             drawingView.setShapeTool(3);
             setActiveTool("ELLIPSE");
         });
-        eyedropperToolButton = addButton(toolRow4, "Pick", () -> {
+        eyedropperToolButton = addButton(toolRow, "Pick", () -> {
             drawingView.setEyedropper(true);
             drawingView.setBucketTool(false);
             drawingView.setShapeTool(0);
@@ -151,11 +141,20 @@ public class MainActivity extends Activity {
             setActiveTool("PICKER");
             Toast.makeText(this,"Tap the canvas to pick a colour",Toast.LENGTH_SHORT).show();
         });
-        selectionToolButton = addButton(toolRow4, "Sel", () -> {
+        selectionToolButton = addButton(toolRow, "Sel", () -> {
             drawingView.setSelectionTool(true);
             setActiveTool("SELECT");
             Toast.makeText(this,"Drag on the canvas to make a rectangular selection",Toast.LENGTH_SHORT).show();
         });
+        Button[] railButtons = {brushToolButton,eraserToolButton,fillToolButton,lineToolButton,
+                rectToolButton,ellipseToolButton,eyedropperToolButton,selectionToolButton};
+        for (Button railButton : railButtons) {
+            LinearLayout.LayoutParams railParams = new LinearLayout.LayoutParams(-1,dp(42));
+            railParams.setMargins(dp(1),dp(1),dp(1),dp(1));
+            railButton.setLayoutParams(railParams);
+            railButton.setMinHeight(dp(38));
+            railButton.setMinimumHeight(dp(38));
+        }
         activeToolLabel = new TextView(this);
         activeToolLabel.setText("BRUSH");
         activeToolLabel.setTextColor(Color.rgb(20,91,145));
@@ -163,7 +162,7 @@ public class MainActivity extends Activity {
         activeToolLabel.setTextSize(10);
         activeToolLabel.setGravity(Gravity.CENTER);
         activeToolLabel.setBackground(glassGradient(Color.rgb(255,255,255),Color.rgb(189,229,244),Color.rgb(255,255,255),dp(9)));
-        toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,dp(22)));
+        activeToolLabel.setTextSize(8);\n        toolRow.addView(activeToolLabel,new LinearLayout.LayoutParams(-1,dp(20)));
         tools.addView(toolRow);
 
         LinearLayout sizeOpacityRow = new LinearLayout(this);
@@ -250,7 +249,7 @@ public class MainActivity extends Activity {
         LinearLayout workspace = new LinearLayout(this);
         workspace.setOrientation(LinearLayout.HORIZONTAL);
         workspace.setBackground(glassGradient(Color.rgb(223,247,250),Color.rgb(177,221,231),Color.rgb(255,255,255),dp(0)));
-        workspace.addView(toolRow,new LinearLayout.LayoutParams(dp(92),-1));
+        workspace.addView(toolRow,new LinearLayout.LayoutParams(dp(56),-1));
         workspace.addView(drawingView,new LinearLayout.LayoutParams(0,-1,1));
         root.addView(workspace,new LinearLayout.LayoutParams(-1,0,1));
         root.addView(tools,new LinearLayout.LayoutParams(-1,132));
@@ -362,7 +361,7 @@ public class MainActivity extends Activity {
         button.setText("");
         button.setContentDescription(type + " tool");
         AeroToolIcon icon = new AeroToolIcon(type,active);
-        icon.setBounds(0,0,dp(30),dp(30));
+        icon.setBounds(0,0,dp(28),dp(28));
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
         button.setGravity(Gravity.CENTER);
