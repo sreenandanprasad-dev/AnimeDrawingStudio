@@ -28,7 +28,7 @@ public class MainActivity extends Activity {
     private int stabilizer = 0;
     private int brushPreset = 0;
     private Button brushToolButton, eraserToolButton, fillToolButton;
-    private Button lineToolButton, rectToolButton, ellipseToolButton, eyedropperToolButton, selectionToolButton;
+    private Button lineToolButton, rectToolButton, ellipseToolButton, eyedropperToolButton, selectionToolButton, shapeToolButton;
     private TextView activeToolLabel;
     private Button symmetryButton;
 
@@ -118,21 +118,7 @@ public class MainActivity extends Activity {
             drawingView.setBucketTool(true);
             setActiveTool("FILL");
         });
-        lineToolButton = addButton(toolRow, "╱", () -> {
-            drawingView.setEyedropper(false);
-            drawingView.setShapeTool(1);
-            setActiveTool("LINE");
-        });
-        rectToolButton = addButton(toolRow, "□", () -> {
-            drawingView.setEyedropper(false);
-            drawingView.setShapeTool(2);
-            setActiveTool("RECT");
-        });
-        ellipseToolButton = addButton(toolRow, "○", () -> {
-            drawingView.setEyedropper(false);
-            drawingView.setShapeTool(3);
-            setActiveTool("ELLIPSE");
-        });
+        shapeToolButton = addButton(toolRow, "◇", () -> showShapeMenu(shapeToolButton));
         eyedropperToolButton = addButton(toolRow, "Pick", () -> {
             drawingView.setEyedropper(true);
             drawingView.setBucketTool(false);
@@ -146,8 +132,7 @@ public class MainActivity extends Activity {
             setActiveTool("SELECT");
             Toast.makeText(this,"Drag on the canvas to make a rectangular selection",Toast.LENGTH_SHORT).show();
         });
-        Button[] railButtons = {brushToolButton,eraserToolButton,fillToolButton,lineToolButton,
-                rectToolButton,ellipseToolButton,eyedropperToolButton,selectionToolButton};
+        Button[] railButtons = {brushToolButton,eraserToolButton,fillToolButton,shapeToolButton,eyedropperToolButton,selectionToolButton};
         for (Button railButton : railButtons) {
             LinearLayout.LayoutParams railParams = new LinearLayout.LayoutParams(-1,dp(42));
             railParams.setMargins(dp(1),dp(1),dp(1),dp(1));
@@ -272,6 +257,29 @@ public class MainActivity extends Activity {
         showPreviousCrashReport();
     }
 
+    private void showShapeMenu(View anchor) {
+        android.widget.PopupMenu menu = new android.widget.PopupMenu(this,anchor);
+        menu.getMenu().add("Line");
+        menu.getMenu().add("Rectangle");
+        menu.getMenu().add("Ellipse");
+        menu.setOnMenuItemClickListener(item -> {
+            String selected=item.getTitle().toString();
+            drawingView.setEyedropper(false);
+            if("Line".equals(selected)) {
+                drawingView.setShapeTool(1);
+                setActiveTool("LINE");
+            } else if("Rectangle".equals(selected)) {
+                drawingView.setShapeTool(2);
+                setActiveTool("RECT");
+            } else {
+                drawingView.setShapeTool(3);
+                setActiveTool("ELLIPSE");
+            }
+            return true;
+        });
+        menu.show();
+    }
+
     private void showMoreActions() {
         String[] actions = {"Reset canvas view","Clear selection","Duplicate selection",
                 "Flip selection horizontally","Flip selection vertically","Delete selection",
@@ -343,9 +351,7 @@ public class MainActivity extends Activity {
         styleToolButton(brushToolButton,"BRUSH".equals(tool));
         styleToolButton(eraserToolButton,"ERASER".equals(tool));
         styleToolButton(fillToolButton,"FILL".equals(tool));
-        styleToolButton(lineToolButton,"LINE".equals(tool));
-        styleToolButton(rectToolButton,"RECT".equals(tool));
-        styleToolButton(ellipseToolButton,"ELLIPSE".equals(tool));
+        styleToolButton(shapeToolButton,"LINE".equals(tool)||"RECT".equals(tool)||"ELLIPSE".equals(tool));
         styleToolButton(eyedropperToolButton,"PICKER".equals(tool));
         styleToolButton(selectionToolButton,"SELECT".equals(tool));
     }
@@ -355,9 +361,7 @@ public class MainActivity extends Activity {
         String type = button == brushToolButton ? "brush"
                 : button == eraserToolButton ? "eraser"
                 : button == fillToolButton ? "fill"
-                : button == lineToolButton ? "line"
-                : button == rectToolButton ? "rect"
-                : button == ellipseToolButton ? "ellipse"
+                : button == shapeToolButton ? "shape"
                 : button == eyedropperToolButton ? "picker" : "select";
         button.setText("");
         button.setContentDescription(type + " tool");
@@ -436,6 +440,13 @@ public class MainActivity extends Activity {
                 p.setStrokeWidth(1.2f); p.setColor(Color.rgb(0,105,220));
                 if("rect".equals(type)) c.drawRoundRect(7,8,27,26,2,2,p);
                 else c.drawOval(7,8,27,26,p);
+            } else if ("shape".equals(type)) {
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3.2f); p.setColor(Color.WHITE);
+                c.drawRoundRect(7,7,27,27,3,3,p);
+                p.setStrokeWidth(1.2f); p.setColor(Color.rgb(0,93,180)); c.drawRoundRect(7,7,27,27,3,3,p);
+                p.setStyle(Paint.Style.FILL);
+                p.setShader(new LinearGradient(10,9,23,25,new int[]{Color.WHITE,Color.rgb(120,225,255),Color.rgb(0,103,208)},null,Shader.TileMode.CLAMP));
+                c.drawCircle(23,23,3,p); p.setShader(null);
             } else if ("picker".equals(type)) {
                 line(c,9,25,24,9,Color.rgb(38,65,105),7);
                 line(c,9,24,24,8,Color.rgb(195,225,245),4);
@@ -1030,6 +1041,9 @@ public class MainActivity extends Activity {
         private boolean eraser=false;
         private boolean bucketTool=false;
         private boolean eyedropperTool=false;
+        private boolean pickerPreviewVisible=false;
+        private float pickerPreviewX=0f,pickerPreviewY=0f;
+        private int pickerPreviewColor=Color.WHITE;
         private boolean selectionTool=false;
         private boolean selectionInProgress=false;
         private boolean hasSelection=false;
@@ -1828,6 +1842,19 @@ public class MainActivity extends Activity {
                 canvas.drawLine(800f,0f,800f,2200f,axis);
             }
             canvas.restore();
+            if(eyedropperTool && pickerPreviewVisible) {
+                float lensX=pickerPreviewX;
+                float lensY=Math.max(dp(34),pickerPreviewY-dp(62));
+                Paint lens=new Paint(Paint.ANTI_ALIAS_FLAG);
+                lens.setColor(Color.rgb(12,67,112)); canvas.drawCircle(lensX,lensY,dp(25),lens);
+                lens.setColor(Color.WHITE); canvas.drawCircle(lensX,lensY,dp(22),lens);
+                lens.setColor(pickerPreviewColor); canvas.drawCircle(lensX,lensY,dp(18),lens);
+                lens.setStyle(Paint.Style.STROKE); lens.setStrokeWidth(dp(1.5f)); lens.setColor(Color.WHITE);
+                canvas.drawCircle(lensX,lensY,dp(18),lens);
+                lens.setStyle(Paint.Style.FILL); lens.setTextSize(dp(8)); lens.setTypeface(Typeface.DEFAULT_BOLD);
+                lens.setTextAlign(Paint.Align.CENTER); lens.setColor(Color.WHITE);
+                canvas.drawText("PICK",lensX,lensY+dp(3),lens);
+            }
         }
 
         private void drawShape(Canvas target,Paint shapePaint,int tool,float x1,float y1,float x2,float y2) {
@@ -1910,11 +1937,12 @@ public class MainActivity extends Activity {
                     }
                     if (eyedropperTool) {
                         if (x>=0 && y>=0 && x<1600 && y<2200) {
-                            currentColor=sampleCompositePixel(Math.max(0,Math.min(1599,(int)x)),
+                            pickerPreviewX=event.getX();
+                            pickerPreviewY=event.getY();
+                            pickerPreviewColor=sampleCompositePixel(Math.max(0,Math.min(1599,(int)x)),
                                     Math.max(0,Math.min(2199,(int)y)));
-                            eyedropperTool=false;
-                            setActiveTool("BRUSH");
-                            Toast.makeText(MainActivity.this,"Colour picked",Toast.LENGTH_SHORT).show();
+                            pickerPreviewVisible=true;
+                            invalidate();
                         }
                         return true;
                     }
@@ -1988,6 +2016,17 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_MOVE:
+                    if(eyedropperTool && event.getPointerCount()==1) {
+                        pickerPreviewX=event.getX();
+                        pickerPreviewY=event.getY();
+                        if(x>=0 && y>=0 && x<1600 && y<2200) {
+                            pickerPreviewColor=sampleCompositePixel(Math.max(0,Math.min(1599,(int)x)),
+                                    Math.max(0,Math.min(2199,(int)y)));
+                            pickerPreviewVisible=true;
+                        } else pickerPreviewVisible=false;
+                        invalidate();
+                        return true;
+                    }
                     if (event.getPointerCount()>=2) {
                         float midX=(event.getX(0)+event.getX(1))/2f;
                         float midY=(event.getY(0)+event.getY(1))/2f;
@@ -2112,6 +2151,17 @@ public class MainActivity extends Activity {
                     return true;
 
                 case MotionEvent.ACTION_UP:
+                    if(eyedropperTool) {
+                        if(pickerPreviewVisible) {
+                            currentColor=pickerPreviewColor;
+                            Toast.makeText(MainActivity.this,"Colour picked",Toast.LENGTH_SHORT).show();
+                        }
+                        eyedropperTool=false;
+                        pickerPreviewVisible=false;
+                        setActiveTool("BRUSH");
+                        invalidate();
+                        return true;
+                    }
                     // A pending bucket tap must be handled before floating-selection
                     // completion; otherwise stale selection state can swallow the tap.
                     if (pendingBucketFill) {
