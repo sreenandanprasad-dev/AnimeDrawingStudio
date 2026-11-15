@@ -218,10 +218,17 @@ public class MainActivity extends Activity {
         bgTitle.setPadding(0,dp(12),0,dp(2));
         panel.addView(bgTitle);
         Spinner backgrounds=new Spinner(this);
-        String[] bgOptions={"White","Transparent"};
+        String[] bgOptions={"White","Transparent","Custom colour"};
         ArrayAdapter<String> bgAdapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,bgOptions);
         bgAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         backgrounds.setAdapter(bgAdapter);
+        final int[] chosenBackground={Color.WHITE};
+        backgrounds.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long id) {
+                if(position==2) showColorWheel(color -> chosenBackground[0]=color);
+            }
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
         panel.addView(backgrounds);
         new AlertDialog.Builder(this).setTitle("New Canvas").setView(panel)
                 .setNegativeButton("Cancel",null)
@@ -241,7 +248,7 @@ public class MainActivity extends Activity {
                     }
                     newCanvasWidth=width;
                     newCanvasHeight=height;
-                    newCanvasBackground=backgrounds.getSelectedItemPosition()==1?Color.TRANSPARENT:Color.WHITE;
+                    newCanvasBackground=backgrounds.getSelectedItemPosition()==1?Color.TRANSPARENT:(backgrounds.getSelectedItemPosition()==2?chosenBackground[0]:Color.WHITE);
                     showDrawingStudio();
                 }).show();
     }
@@ -730,7 +737,9 @@ public class MainActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private void showColorWheel() {
+    private void showColorWheel() { showColorWheel(null); }
+
+    private void showColorWheel(java.util.function.IntConsumer onSelected) {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -777,6 +786,7 @@ public class MainActivity extends Activity {
                 .setPositiveButton("Use colour",(dialog,which) -> {
                     // Keep the currently selected tool (especially Bucket Fill) active.
                     currentColor = selected[0];
+                    if(onSelected!=null) onSelected.accept(selected[0]);
                 })
                 .show();
     }
