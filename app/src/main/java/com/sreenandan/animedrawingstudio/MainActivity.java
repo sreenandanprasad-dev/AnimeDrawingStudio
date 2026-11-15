@@ -33,6 +33,9 @@ public class MainActivity extends Activity {
     private Button symmetryButton;
 
     private boolean studioVisible=false;
+    private int newCanvasWidth=1600;
+    private int newCanvasHeight=2200;
+    private int newCanvasBackground=Color.WHITE;
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
@@ -80,7 +83,7 @@ public class MainActivity extends Activity {
         subtitle.setPadding(dp(4),dp(14),dp(4),dp(8));
         root.addView(subtitle);
 
-        Button newCanvas=addButton(root,"＋  New Canvas",() -> showDrawingStudio());
+        Button newCanvas=addButton(root,"＋  New Canvas",() -> showNewCanvasSetup());
         newCanvas.setTextSize(15);
         newCanvas.setLayoutParams(new LinearLayout.LayoutParams(-1,dp(48)));
 
@@ -172,6 +175,77 @@ public class MainActivity extends Activity {
         setContentView(root);
     }
 
+    private void showNewCanvasSetup() {
+        LinearLayout panel=new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(14),dp(8),dp(14),dp(8));
+        TextView sizeTitle=new TextView(this);
+        sizeTitle.setText("Canvas size");
+        sizeTitle.setTextColor(Color.rgb(25,74,112));
+        sizeTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        panel.addView(sizeTitle);
+        Spinner presets=new Spinner(this);
+        String[] options={"Portrait 1600 × 2200","Landscape 2200 × 1600","Square 1600 × 1600","Custom size"};
+        ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,options);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        presets.setAdapter(adapter);
+        panel.addView(presets);
+        LinearLayout customRow=new LinearLayout(this);
+        EditText widthInput=new EditText(this);
+        widthInput.setSingleLine(true);
+        widthInput.setInputType(2);
+        widthInput.setHint("Width px");
+        widthInput.setText("1600");
+        EditText heightInput=new EditText(this);
+        heightInput.setSingleLine(true);
+        heightInput.setInputType(2);
+        heightInput.setHint("Height px");
+        heightInput.setText("2200");
+        customRow.addView(widthInput,new LinearLayout.LayoutParams(0,dp(48),1));
+        customRow.addView(heightInput,new LinearLayout.LayoutParams(0,dp(48),1));
+        panel.addView(customRow);
+        customRow.setVisibility(View.GONE);
+        presets.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long id) {
+                customRow.setVisibility(position==3?View.VISIBLE:View.GONE);
+            }
+            public void onNothingSelected(android.widget.AdapterView<?> parent) {}
+        });
+        TextView bgTitle=new TextView(this);
+        bgTitle.setText("Background");
+        bgTitle.setTextColor(Color.rgb(25,74,112));
+        bgTitle.setTypeface(Typeface.DEFAULT_BOLD);
+        bgTitle.setPadding(0,dp(12),0,dp(2));
+        panel.addView(bgTitle);
+        Spinner backgrounds=new Spinner(this);
+        String[] bgOptions={"White","Transparent"};
+        ArrayAdapter<String> bgAdapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,bgOptions);
+        bgAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        backgrounds.setAdapter(bgAdapter);
+        panel.addView(backgrounds);
+        new AlertDialog.Builder(this).setTitle("New Canvas").setView(panel)
+                .setNegativeButton("Cancel",null)
+                .setPositiveButton("Create",(dialog,which)->{
+                    int width=1600,height=2200;
+                    int choice=presets.getSelectedItemPosition();
+                    if(choice==1){width=2200;height=1600;}
+                    else if(choice==2){width=1600;height=1600;}
+                    else if(choice==3){
+                        try { width=Integer.parseInt(widthInput.getText().toString().trim());
+                              height=Integer.parseInt(heightInput.getText().toString().trim()); }
+                        catch(Exception error){Toast.makeText(this,"Enter valid canvas dimensions",Toast.LENGTH_SHORT).show();return;}
+                    }
+                    if(width<256||height<256||width>2400||height>3200){
+                        Toast.makeText(this,"Canvas size must be 256–2400 px wide and 256–3200 px high",Toast.LENGTH_LONG).show();
+                        return;
+                    }
+                    newCanvasWidth=width;
+                    newCanvasHeight=height;
+                    newCanvasBackground=backgrounds.getSelectedItemPosition()==1?Color.TRANSPARENT:Color.WHITE;
+                    showDrawingStudio();
+                }).show();
+    }
+
     private void showDrawingStudio() {
         studioVisible=true;
         getWindow().setStatusBarColor(Color.rgb(38,112,171));
@@ -203,7 +277,7 @@ public class MainActivity extends Activity {
         addButton(toolbar,"Home",() -> showGallery());
         addButton(toolbar,"⋮",() -> showMoreActions());
 
-        drawingView = new DrawingView();
+        drawingView = new DrawingView(newCanvasWidth,newCanvasHeight,newCanvasBackground);
         root.addView(titleBar,new LinearLayout.LayoutParams(-1,34));
         root.addView(toolbar, new LinearLayout.LayoutParams(-1, 42));
 
@@ -1120,6 +1194,13 @@ public class MainActivity extends Activity {
     }
 
     private class DrawingView extends View {
+        private final int canvasWidth;
+        private final int canvasHeight;
+        private final int canvasBackground;
+        DrawingView(int width,int height,int background) {
+            super(MainActivity.this);
+            canvasWidth=width; canvasHeight=height; canvasBackground=background;
+        }
         private class Layer {
             Bitmap bitmap;
             String name;
@@ -1130,7 +1211,7 @@ public class MainActivity extends Activity {
             boolean clipToBelow=false;
             Layer(String label) {
                 name=label;
-                bitmap=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
+                bitmap=Bitmap.createBitmap(canvasWidth,canvasHeight,Bitmap.Config.ARGB_8888);
                 bitmap.eraseColor(Color.TRANSPARENT);
             }
             Layer(String label,Bitmap source) {
@@ -1294,8 +1375,8 @@ public class MainActivity extends Activity {
             selectionInProgress=false;
             selectionStartX=0f;
             selectionStartY=0f;
-            selectionEndX=1600f;
-            selectionEndY=2200f;
+            selectionEndX=canvasWidth;
+            selectionEndY=canvasHeight;
             hasSelection=true;
             selectionTool=true;
             invalidate();
@@ -1318,8 +1399,8 @@ public class MainActivity extends Activity {
             }
             int left=Math.max(0,(int)Math.floor(Math.min(selectionStartX,selectionEndX)));
             int top=Math.max(0,(int)Math.floor(Math.min(selectionStartY,selectionEndY)));
-            int right=Math.min(1600,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
-            int bottom=Math.min(2200,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
+            int right=Math.min(canvasWidth,(int)Math.ceil(Math.max(selectionStartX,selectionEndX)));
+            int bottom=Math.min(canvasHeight,(int)Math.ceil(Math.max(selectionStartY,selectionEndY)));
             if(right<=left || bottom<=top) return;
 
             Bitmap copy=null;
@@ -1938,7 +2019,7 @@ public class MainActivity extends Activity {
         Bitmap exportBitmap() {
             Bitmap merged=Bitmap.createBitmap(1600,2200,Bitmap.Config.ARGB_8888);
             Canvas c=new Canvas(merged);
-            c.drawColor(Color.WHITE);
+            if(canvasBackground!=Color.TRANSPARENT) c.drawColor(canvasBackground);
             drawLayerStack(c);
             return merged;
         }
@@ -1951,7 +2032,7 @@ public class MainActivity extends Activity {
             canvas.translate(getWidth()/2f+panX,getHeight()/2f+panY);
             canvas.rotate(rotation);
             canvas.scale(scale*zoom,scale*zoom);
-            canvas.translate(-800f,-1100f);
+            canvas.translate(-(canvasWidth/2f),-(canvasHeight/2f));
             Paint background=new Paint();
             background.setColor(Color.WHITE);
             canvas.drawRect(0,0,1600,2200,background);
