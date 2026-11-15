@@ -2071,7 +2071,23 @@ public class MainActivity extends Activity {
             canvas.translate(-(canvasWidth/2f),-(canvasHeight/2f));
             Paint background=new Paint();
             background.setColor(canvasBackground);
-            if(canvasBackground!=Color.TRANSPARENT) canvas.drawRect(0,0,canvasWidth,canvasHeight,background);
+            if(canvasBackground!=Color.TRANSPARENT) {
+                canvas.drawRect(0,0,canvasWidth,canvasHeight,background);
+            } else {
+                // Editor-only transparency checkerboard; it is not part of the drawing or PNG.
+                Paint checker=new Paint();
+                int tile=48;
+                checker.setColor(Color.rgb(225,232,237));
+                canvas.drawRect(0,0,canvasWidth,canvasHeight,checker);
+                checker.setColor(Color.rgb(250,252,253));
+                for(int cy=0;cy<canvasHeight;cy+=tile) {
+                    for(int cx=0;cx<canvasWidth;cx+=tile) {
+                        if(((cx/tile)+(cy/tile))%2==0)
+                            canvas.drawRect(cx,cy,Math.min(cx+tile,canvasWidth),
+                                    Math.min(cy+tile,canvasHeight),checker);
+                    }
+                }
+            }
             drawLayerStack(canvas);
             // Editor-only canvas boundary: visible on transparent canvases,
             // but never included in the merged/exported PNG.
