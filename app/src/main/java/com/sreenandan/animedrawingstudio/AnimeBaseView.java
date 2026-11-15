@@ -229,6 +229,8 @@ public class AnimeBaseView extends GLSurfaceView {
         @Override public void onSurfaceCreated(GL10 gl,EGLConfig config) {
             gl.glClearColor(0f,0f,0f,0f);
             gl.glEnable(GL10.GL_DEPTH_TEST);
+            gl.glEnable(GL10.GL_BLEND);
+            gl.glBlendFunc(GL10.GL_SRC_ALPHA,GL10.GL_ONE_MINUS_SRC_ALPHA);
             gl.glEnableClientState(GL10.GL_VERTEX_ARRAY);
             gl.glEnableClientState(GL10.GL_COLOR_ARRAY);
         }
