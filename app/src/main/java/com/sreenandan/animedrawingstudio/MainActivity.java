@@ -61,23 +61,7 @@ public class MainActivity extends Activity {
         addButton(toolbar,"↷",() -> drawingView.redo());
         addButton(toolbar,"▤",() -> showLayers());
         addButton(toolbar,"Save",() -> saveImage());
-        addButton(toolbar,"⌕",() -> drawingView.resetView());
-        addButton(toolbar,"Sel X",() -> drawingView.clearSelection());
-        addButton(toolbar,"Dup",() -> drawingView.duplicateSelection());
-        addButton(toolbar,"Flip H",() -> drawingView.flipSelection(true));
-        addButton(toolbar,"Flip V",() -> drawingView.flipSelection(false));
-        addButton(toolbar,"Del Sel",() -> drawingView.deleteSelection());
-        addButton(toolbar,"All",() -> drawingView.selectAll());
-        Button gridButton = addButton(toolbar,"Grid OFF",() -> {
-            boolean enabled = !drawingView.isGridEnabled();
-            drawingView.setGridEnabled(enabled);
-            gridButtonLabelRefresh(toolbar,enabled);
-        });
-        symmetryButton = addButton(toolbar,"Sym OFF",() -> {
-            boolean enabled = !drawingView.isSymmetryEnabled();
-            drawingView.setSymmetryEnabled(enabled);
-            symmetryButton.setText(enabled ? "Sym ON" : "Sym OFF");
-        });
+        addButton(toolbar,"⋮",() -> showMoreActions());
 
         drawingView = new DrawingView();
         root.addView(titleBar,new LinearLayout.LayoutParams(-1,34));
@@ -286,6 +270,33 @@ public class MainActivity extends Activity {
         setActiveTool("BRUSH");
         setContentView(root);
         showPreviousCrashReport();
+    }
+
+    private void showMoreActions() {
+        String[] actions = {"Reset canvas view","Clear selection","Duplicate selection",
+                "Flip selection horizontally","Flip selection vertically","Delete selection",
+                "Select all","Toggle grid","Toggle symmetry"};
+        new AlertDialog.Builder(this)
+                .setTitle("Studio tools")
+                .setItems(actions,(dialog,which) -> {
+                    switch(which) {
+                        case 0: drawingView.resetView(); break;
+                        case 1: drawingView.clearSelection(); break;
+                        case 2: drawingView.duplicateSelection(); break;
+                        case 3: drawingView.flipSelection(true); break;
+                        case 4: drawingView.flipSelection(false); break;
+                        case 5: drawingView.deleteSelection(); break;
+                        case 6: drawingView.selectAll(); break;
+                        case 7:
+                            drawingView.setGridEnabled(!drawingView.isGridEnabled());
+                            Toast.makeText(this,drawingView.isGridEnabled()?"Grid on":"Grid off",Toast.LENGTH_SHORT).show();
+                            break;
+                        case 8:
+                            drawingView.setSymmetryEnabled(!drawingView.isSymmetryEnabled());
+                            Toast.makeText(this,drawingView.isSymmetryEnabled()?"Symmetry on":"Symmetry off",Toast.LENGTH_SHORT).show();
+                            break;
+                    }
+                }).show();
     }
 
     private void gridButtonLabelRefresh(LinearLayout toolbar, boolean enabled) {
