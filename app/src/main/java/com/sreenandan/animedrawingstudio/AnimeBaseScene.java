@@ -21,6 +21,7 @@ public final class AnimeBaseScene {
     private Bitmap cachedBitmap;
     private int cachedWidth=0,cachedHeight=0;
     private boolean dirty=true;
+    private float armPose=0f, elbowPose=0f, legPose=0f, kneePose=0f;
 
     public AnimeBaseScene(int model) {
         mesh=build(model);
@@ -33,6 +34,14 @@ public final class AnimeBaseScene {
         rx=Math.max(-85f,Math.min(85f,rx+dx));
         ry=(ry+dy)%360f;
         dirty=true;
+    }
+    public synchronized void setPose(float arm,float elbow,float leg,float knee) {
+        armPose=Math.max(-70f,Math.min(70f,arm)); elbowPose=Math.max(-100f,Math.min(100f,elbow));
+        legPose=Math.max(-45f,Math.min(45f,leg)); kneePose=Math.max(-90f,Math.min(90f,knee)); dirty=true;
+    }
+    private static float[] rotatePoint(float x,float y,float px,float py,float degrees) {
+        double a=Math.toRadians(degrees); float dx=x-px,dy=y-py;
+        return new float[]{px+dx*(float)Math.cos(a)-dy*(float)Math.sin(a),py+dx*(float)Math.sin(a)+dy*(float)Math.cos(a)};
     }
     public synchronized void zoom(float factor) {
         if(factor>0f&&!Float.isNaN(factor)) { zoom=Math.max(.45f,Math.min(4f,zoom*factor)); dirty=true; }
@@ -69,7 +78,22 @@ public final class AnimeBaseScene {
         float fit=Math.min(bounds.width()/2.65f,bounds.height()/3.15f)*zoom;
         float cx=bounds.centerX(), cy=bounds.centerY();
         for(int v=0;v<projected.length;v++){
-            float x=positions[v*3], y=positions[v*3+1]-.38f, z=positions[v*3+2];
+            float x=positions[v*3], y=positions[v*3+1], z=positions[v*3+2];
+            float originalY=y, side=x<0?-1f:1f;
+            if(Math.abs(x)>.27f && originalY<1.02f && originalY>.20f) {
+                float[] p=rotatePoint(x,y,side*.285f,.94f,side*armPose); x=p[0]; y=p[1];
+                if(originalY<.64f) {
+                    float[] elbow=rotatePoint(side*.48f,.62f,side*.285f,.94f,side*armPose);
+                    p=rotatePoint(x,y,elbow[0],elbow[1],side*elbowPose); x=p[0]; y=p[1];
+                }
+            } else if(Math.abs(x)>.075f && originalY<=.27f && originalY>-.99f) {
+                float[] p=rotatePoint(x,y,side*.155f,.25f,side*legPose); x=p[0]; y=p[1];
+                if(originalY<-.27f) {
+                    float[] knee=rotatePoint(side*.18f,-.30f,side*.155f,.25f,side*legPose);
+                    p=rotatePoint(x,y,knee[0],knee[1],side*kneePose); x=p[0]; y=p[1];
+                }
+            }
+            y-=.38f;
             float y1=y*ca-z*sa, z1=y*sa+z*ca;
             float x2=x*cb+z1*sb, z2=-x*sb+z1*cb;
             float camera=4.6f-z2;
