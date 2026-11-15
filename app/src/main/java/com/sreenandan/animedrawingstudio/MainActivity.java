@@ -40,6 +40,7 @@ public class MainActivity extends Activity {
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
         loadBrushPreferences();
+        loadCanvasPreferences();
         installCrashReporter();
         getWindow().setStatusBarColor(Color.rgb(38,112,171));
         getWindow().setNavigationBarColor(Color.rgb(207,235,246));
@@ -61,6 +62,25 @@ public class MainActivity extends Activity {
                 .putInt("opacity",brushOpacity)
                 .putInt("stabilizer",stabilizer)
                 .putInt("preset",brushPreset)
+                .apply();
+    }
+
+    private void loadCanvasPreferences() {
+        android.content.SharedPreferences p=getSharedPreferences("canvas_preferences",MODE_PRIVATE);
+        int width=p.getInt("width",1600);
+        int height=p.getInt("height",2200);
+        if(width>=256 && width<=2400 && height>=256 && height<=3200) {
+            newCanvasWidth=width;
+            newCanvasHeight=height;
+        }
+        newCanvasBackground=p.getInt("background",Color.WHITE);
+    }
+
+    private void saveCanvasPreferences() {
+        getSharedPreferences("canvas_preferences",MODE_PRIVATE).edit()
+                .putInt("width",newCanvasWidth)
+                .putInt("height",newCanvasHeight)
+                .putInt("background",newCanvasBackground)
                 .apply();
     }
 
@@ -207,18 +227,22 @@ public class MainActivity extends Activity {
         ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,options);
         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         presets.setAdapter(adapter);
+        int savedPreset=(newCanvasWidth==1600 && newCanvasHeight==2200)?0:
+                (newCanvasWidth==2200 && newCanvasHeight==1600)?1:
+                (newCanvasWidth==1600 && newCanvasHeight==1600)?2:3;
+        presets.setSelection(savedPreset);
         panel.addView(presets);
         LinearLayout customRow=new LinearLayout(this);
         EditText widthInput=new EditText(this);
         widthInput.setSingleLine(true);
         widthInput.setInputType(2);
         widthInput.setHint("Width px");
-        widthInput.setText("1600");
+        widthInput.setText(String.valueOf(newCanvasWidth));
         EditText heightInput=new EditText(this);
         heightInput.setSingleLine(true);
         heightInput.setInputType(2);
         heightInput.setHint("Height px");
-        heightInput.setText("2200");
+        heightInput.setText(String.valueOf(newCanvasHeight));
         customRow.addView(widthInput,new LinearLayout.LayoutParams(0,dp(48),1));
         customRow.addView(heightInput,new LinearLayout.LayoutParams(0,dp(48),1));
         panel.addView(customRow);
@@ -240,7 +264,10 @@ public class MainActivity extends Activity {
         ArrayAdapter<String> bgAdapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,bgOptions);
         bgAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
         backgrounds.setAdapter(bgAdapter);
-        final int[] chosenBackground={Color.WHITE};
+        final int[] chosenBackground={newCanvasBackground};
+        int savedBackgroundChoice=newCanvasBackground==Color.WHITE?0:
+                newCanvasBackground==Color.TRANSPARENT?1:2;
+        backgrounds.setSelection(savedBackgroundChoice);
         backgrounds.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long id) {
                 if(position==2) showColorWheel(chosenBackground[0],false,color -> chosenBackground[0]=color);
@@ -267,6 +294,7 @@ public class MainActivity extends Activity {
                     newCanvasWidth=width;
                     newCanvasHeight=height;
                     newCanvasBackground=backgrounds.getSelectedItemPosition()==1?Color.TRANSPARENT:(backgrounds.getSelectedItemPosition()==2?chosenBackground[0]:Color.WHITE);
+                    saveCanvasPreferences();
                     showDrawingStudio();
                 }).show();
     }
