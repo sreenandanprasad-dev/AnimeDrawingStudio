@@ -640,71 +640,38 @@ public class MainActivity extends Activity {
             Toast.makeText(this,"Open a canvas first",Toast.LENGTH_SHORT).show();
             return;
         }
-        if(canvasAnimeBase!=null) {
-            canvasAnimeBase.onPause();
-            canvasStage.removeView(canvasAnimeBase);
-        }
-        canvasAnimeBase=new AnimeBaseView(this,model);
+        if(!drawingView.add3DLayer(name,model)) return;
         canvas3DLayerName=name;
         canvas3DVisible=true;
         canvas3DOpacity=100;
-        canvasAnimeBase.setInteractionEnabled(false);
-        canvasAnimeBase.setModelOpacity(1f);
-        canvasStage.addView(canvasAnimeBase,new FrameLayout.LayoutParams(1,1));
-        updateCanvas3DPlacement();
+        canvasAnimeBase=null;
         baseAdjustMode=false;
-
         LinearLayout controls=new LinearLayout(this);
         controls.setGravity(Gravity.CENTER);
         controls.setPadding(dp(5),dp(3),dp(5),dp(3));
         controls.setBackground(glassGradient(Color.WHITE,Color.rgb(178,220,240),Color.WHITE,dp(12)));
         Button modeButton=new Button(this);
-        modeButton.setText("Adjust");
-        modeButton.setTextSize(10);
-        modeButton.setAllCaps(false);
+        modeButton.setText("Adjust"); modeButton.setTextSize(10); modeButton.setAllCaps(false);
         controls.addView(modeButton,new LinearLayout.LayoutParams(dp(76),dp(36)));
         modeButton.setOnClickListener(v->{
             baseAdjustMode=!baseAdjustMode;
-            if(canvasAnimeBase!=null) canvasAnimeBase.setInteractionEnabled(baseAdjustMode);
             modeButton.setText(baseAdjustMode?"Draw":"Adjust");
             Toast.makeText(this,baseAdjustMode?"3D reference adjustment enabled":"Drawing enabled",Toast.LENGTH_SHORT).show();
         });
-        Button hideButton=new Button(this);
-        hideButton.setText("Hide");
-        hideButton.setTextSize(10);
-        hideButton.setAllCaps(false);
-        controls.addView(hideButton,new LinearLayout.LayoutParams(dp(68),dp(36)));
-        hideButton.setOnClickListener(v->{
-            if(canvasAnimeBase!=null) {
-                boolean visible=canvasAnimeBase.getVisibility()==View.VISIBLE;
-                canvasAnimeBase.setVisibility(visible?View.INVISIBLE:View.VISIBLE);
-                canvas3DVisible=!visible;
-                hideButton.setText(visible?"Show":"Hide");
-            }
-        });
         Button removeButton=new Button(this);
-        removeButton.setText("×");
-        removeButton.setTextSize(14);
-        removeButton.setAllCaps(false);
+        removeButton.setText("×"); removeButton.setTextSize(14); removeButton.setAllCaps(false);
         controls.addView(removeButton,new LinearLayout.LayoutParams(dp(44),dp(36)));
         removeButton.setOnClickListener(v->{
-            if(canvasAnimeBase!=null) {
-                canvasAnimeBase.onPause();
-                canvasStage.removeView(canvasAnimeBase);
-                canvasAnimeBase=null;
-            }
-            baseAdjustMode=false;
-            canvas3DLayerName=null;
-            canvas3DControls=null;
-            canvas3DVisible=false;
+            drawingView.remove3DLayer();
+            baseAdjustMode=false; canvas3DLayerName=null; canvas3DControls=null; canvas3DVisible=false;
             canvasStage.removeView(controls);
         });
         FrameLayout.LayoutParams controlParams=new FrameLayout.LayoutParams(-2,dp(42),Gravity.TOP|Gravity.CENTER_HORIZONTAL);
         controlParams.topMargin=dp(6);
         canvasStage.addView(controls,controlParams);
         canvas3DControls=controls;
-        canvasAnimeBase.onResume();
-        Toast.makeText(this,name+" added as a canvas reference. Choose Adjust to rotate it, then Draw to draw over it.",Toast.LENGTH_LONG).show();
+        drawingView.invalidate();
+        Toast.makeText(this,name+" added as an editable 3D layer. Choose Adjust to rotate it, then Draw to sketch over it.",Toast.LENGTH_LONG).show();
     }
 
     private void showAnimeBaseViewer(int model,String name) {
@@ -1181,74 +1148,6 @@ public class MainActivity extends Activity {
         refresh[0] = new Runnable() {
             @Override public void run() {
                 rows.removeAllViews();
-                // 3D references are independent scene layers, never flattened into paint bitmaps.
-                if(canvasAnimeBase!=null) {
-                    LinearLayout referenceRow=new LinearLayout(MainActivity.this);
-                    referenceRow.setGravity(Gravity.CENTER_VERTICAL);
-                    referenceRow.setPadding(dp(8),dp(6),dp(8),dp(6));
-                    referenceRow.setBackground(glassGradient(Color.rgb(238,250,255),Color.rgb(195,230,245),Color.WHITE,dp(8)));
-                    TextView modelIcon=new TextView(MainActivity.this);
-                    modelIcon.setText("◇");
-                    modelIcon.setTextSize(25);
-                    modelIcon.setTextColor(Color.rgb(35,105,155));
-                    referenceRow.addView(modelIcon,new LinearLayout.LayoutParams(dp(42),dp(48)));
-                    TextView modelTitle=new TextView(MainActivity.this);
-                    modelTitle.setText("3D  •  "+(canvas3DLayerName==null?"Anime reference":canvas3DLayerName));
-                    modelTitle.setTextSize(13);
-                    modelTitle.setTextColor(Color.rgb(25,74,112));
-                    modelTitle.setTypeface(Typeface.DEFAULT_BOLD);
-                    referenceRow.addView(modelTitle,new LinearLayout.LayoutParams(0,dp(48),1));
-                    CheckBox modelVisible=new CheckBox(MainActivity.this);
-                    modelVisible.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.rgb(35,105,155)));
-                    modelVisible.setChecked(canvas3DVisible);
-                    modelVisible.setOnCheckedChangeListener((button,checked)->{
-                        canvas3DVisible=checked;
-                        if(canvasAnimeBase!=null) canvasAnimeBase.setVisibility(checked?View.VISIBLE:View.INVISIBLE);
-                    });
-                    referenceRow.addView(modelVisible);
-                    Button adjust3D=new Button(MainActivity.this);
-                    adjust3D.setText("Adjust");
-                    adjust3D.setTextSize(10);
-                    adjust3D.setAllCaps(false);
-                    referenceRow.addView(adjust3D,new LinearLayout.LayoutParams(dp(72),dp(42)));
-                    adjust3D.setOnClickListener(v->{
-                        baseAdjustMode=true;
-                        if(canvasAnimeBase!=null) canvasAnimeBase.setInteractionEnabled(true);
-                        Toast.makeText(MainActivity.this,"3D layer selected: drag to rotate, pinch to zoom. Tap Draw when finished.",Toast.LENGTH_SHORT).show();
-                    });
-                    LinearLayout opacityRow=new LinearLayout(MainActivity.this);
-                    opacityRow.setGravity(Gravity.CENTER_VERTICAL);
-                    opacityRow.setPadding(dp(10),0,dp(10),dp(5));
-                    TextView opacityTitle=new TextView(MainActivity.this);
-                    opacityTitle.setText("3D opacity");
-                    opacityTitle.setTextSize(12);
-                    opacityTitle.setTextColor(Color.rgb(25,74,112));
-                    opacityRow.addView(opacityTitle,new LinearLayout.LayoutParams(dp(82),dp(38)));
-                    SeekBar opacitySlider=new SeekBar(MainActivity.this);
-                    opacitySlider.setMax(100);
-                    opacitySlider.setProgress(canvas3DOpacity);
-                    opacityRow.addView(opacitySlider,new LinearLayout.LayoutParams(0,dp(38),1));
-                    TextView opacityValue=new TextView(MainActivity.this);
-                    opacityValue.setText(canvas3DOpacity+"%");
-                    opacityValue.setTextSize(12);
-                    opacityValue.setTextColor(Color.rgb(25,74,112));
-                    opacityValue.setGravity(Gravity.CENTER);
-                    opacityRow.addView(opacityValue,new LinearLayout.LayoutParams(dp(42),dp(38)));
-                    opacitySlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
-                        @Override public void onProgressChanged(SeekBar bar,int value,boolean fromUser){
-                            canvas3DOpacity=value;
-                            opacityValue.setText(value+"%");
-                            if(canvasAnimeBase!=null) canvasAnimeBase.setModelOpacity(value/100f);
-                        }
-                        @Override public void onStartTrackingTouch(SeekBar bar){}
-                        @Override public void onStopTrackingTouch(SeekBar bar){}
-                    });
-                    rows.addView(referenceRow);
-                    rows.addView(opacityRow);
-                    View separator=new View(MainActivity.this);
-                    separator.setBackgroundColor(Color.rgb(100,160,190));
-                    rows.addView(separator,new LinearLayout.LayoutParams(-1,dp(2)));
-                }
                 ArrayList<String> names = drawingView.getLayerNames();
                 for (int i=names.size()-1;i>=0;i--) {
                     final int index=i;
@@ -1287,7 +1186,10 @@ public class MainActivity extends Activity {
                     select.setTextColor(Color.BLACK);
                     row.addView(select,new LinearLayout.LayoutParams(0,48,1));
                     select.setOnClickListener(v -> {
-                        drawingView.setActiveLayer(index);
+                        if(drawingView.isLayer3D(index)) {
+                            baseAdjustMode=true;
+                            Toast.makeText(MainActivity.this,"3D layer selected. Drag on the canvas to adjust its pose.",Toast.LENGTH_SHORT).show();
+                        } else drawingView.setActiveLayer(index);
                         refresh[0].run();
                     });
                     CheckBox visible = new CheckBox(MainActivity.this);
@@ -1303,6 +1205,7 @@ public class MainActivity extends Activity {
                     CheckBox alphaLock = new CheckBox(MainActivity.this);
                     alphaLock.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.BLACK));
                     alphaLock.setChecked(drawingView.isLayerAlphaLocked(index));
+                    alphaLock.setVisibility(drawingView.isLayer3D(index)?View.GONE:View.VISIBLE);
                     alphaLock.setOnCheckedChangeListener((button,checked) ->
                             drawingView.setLayerAlphaLocked(index,checked));
                     row.addView(alphaLock);
@@ -1314,6 +1217,7 @@ public class MainActivity extends Activity {
                     CheckBox clip = new CheckBox(MainActivity.this);
                     clip.setButtonTintList(android.content.res.ColorStateList.valueOf(Color.BLACK));
                     clip.setChecked(drawingView.isLayerClipped(index));
+                    clip.setVisibility(drawingView.isLayer3D(index)?View.GONE:View.VISIBLE);
                     clip.setEnabled(index>0);
                     clip.setOnCheckedChangeListener((button,checked) -> drawingView.setLayerClipped(index,checked));
                     row.addView(clip);
@@ -1542,6 +1446,12 @@ public class MainActivity extends Activity {
             int blendMode=0;
             boolean alphaLocked=false;
             boolean clipToBelow=false;
+            AnimeBaseScene scene=null;
+            boolean is3D(){return scene!=null;}
+            Layer(String label,int model) {
+                this(label);
+                scene=new AnimeBaseScene(model);
+            }
             Layer(String label) {
                 name=label;
                 bitmap=Bitmap.createBitmap(canvasWidth,canvasHeight,Bitmap.Config.ARGB_8888);
@@ -1929,7 +1839,8 @@ public class MainActivity extends Activity {
         }
         Bitmap getLayerThumbnail(int index) {
             if(index<0 || index>=layers.size()) return null;
-            Bitmap source=layers.get(index).bitmap;
+            Layer layer=layers.get(index);
+            Bitmap source=layer.bitmap;
             int width=72, height=99;
             Bitmap preview=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
             Canvas canvas=new Canvas(preview);
@@ -1942,12 +1853,53 @@ public class MainActivity extends Activity {
             Paint imagePaint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
             Rect src=new Rect(0,0,source.getWidth(),source.getHeight());
             Rect dst=new Rect(0,0,width,height);
-            canvas.drawBitmap(source,src,dst,imagePaint);
+            if(layer.scene!=null) layer.scene.draw(canvas,new RectF(4,4,width-4,height-4),layer.opacity);
+            else canvas.drawBitmap(source,src,dst,imagePaint);
             return preview;
         }
         int getActiveLayer() { return activeLayer; }
         String getActiveLayerName() { return layers.get(activeLayer).name; }
         boolean isLayerVisible(int index) { return layers.get(index).visible; }
+        boolean isLayer3D(int index) { return index>=0 && index<layers.size() && layers.get(index).scene!=null; }
+        int find3DLayerIndex() {
+            for(int i=0;i<layers.size();i++) if(layers.get(i).scene!=null) return i;
+            return -1;
+        }
+        boolean add3DLayer(String name,int model) {
+            if(layers.size()>=6) {
+                Toast.makeText(MainActivity.this,"Layer limit reached. Delete a layer first.",Toast.LENGTH_SHORT).show();
+                return false;
+            }
+            if(find3DLayerIndex()>=0) {
+                Toast.makeText(MainActivity.this,"A 3D reference layer already exists.",Toast.LENGTH_SHORT).show();
+                return false;
+            }
+            layers.add(new Layer(name,model));
+            invalidate();
+            return true;
+        }
+        void remove3DLayer() {
+            int index=find3DLayerIndex();
+            if(index>=0) {
+                Layer removed=layers.remove(index);
+                if(removed.bitmap!=null&&!removed.bitmap.isRecycled()) removed.bitmap.recycle();
+                clearHistory();
+                invalidate();
+            }
+        }
+        void set3DLayerVisible(boolean visible) {
+            int index=find3DLayerIndex();
+            if(index>=0) setLayerVisible(index,visible);
+        }
+        boolean has3DLayer() { return find3DLayerIndex()>=0; }
+        void rotate3DModel(float dx,float dy) {
+            int index=find3DLayerIndex();
+            if(index>=0) { layers.get(index).scene.rotate(dx,dy); invalidate(); }
+        }
+        void zoom3DModel(float factor) {
+            int index=find3DLayerIndex();
+            if(index>=0) { layers.get(index).scene.zoom(factor); invalidate(); }
+        }
         int getLayerOpacity(int index) { return layers.get(index).opacity; }
         int getLayerBlendMode(int index) { return layers.get(index).blendMode; }
         boolean isLayerAlphaLocked(int index) { return layers.get(index).alphaLocked; }
@@ -2007,6 +1959,10 @@ public class MainActivity extends Activity {
             for(int i=0;i<layers.size();i++) {
                 Layer layer=layers.get(i);
                 if(!layer.visible || layer.opacity<=0) continue;
+                if(layer.scene!=null) {
+                    layer.scene.draw(target,bounds,layer.opacity);
+                    continue;
+                }
                 if(layer.clipToBelow && i>0) {
                     Layer base=layers.get(i-1);
                     if(!base.visible || base.opacity<=0) continue;
@@ -2032,7 +1988,7 @@ public class MainActivity extends Activity {
             invalidate();
         }
         void setActiveLayer(int index) {
-            if (index>=0 && index<layers.size()) activeLayer=index;
+            if (index>=0 && index<layers.size() && layers.get(index).scene==null) activeLayer=index;
             invalidate();
         }
         boolean moveLayer(int from,int to) {
@@ -2493,7 +2449,38 @@ public class MainActivity extends Activity {
             }
         }
 
+        private float modelTouchX,modelTouchY,modelTouchDistance;
+        private boolean modelPinching=false;
+        private float pointerDistance(MotionEvent e) {
+            float dx=e.getX(0)-e.getX(1),dy=e.getY(0)-e.getY(1);
+            return (float)Math.sqrt(dx*dx+dy*dy);
+        }
         @Override public boolean onTouchEvent(android.view.MotionEvent event) {
+            if(baseAdjustMode && has3DLayer()) {
+                int action=event.getActionMasked();
+                if(action==MotionEvent.ACTION_DOWN) {
+                    modelTouchX=event.getX(); modelTouchY=event.getY(); modelPinching=false; return true;
+                }
+                if(action==MotionEvent.ACTION_POINTER_DOWN && event.getPointerCount()>=2) {
+                    modelTouchDistance=pointerDistance(event); modelPinching=true; return true;
+                }
+                if(action==MotionEvent.ACTION_MOVE) {
+                    if(event.getPointerCount()>=2) {
+                        float distance=pointerDistance(event);
+                        if(modelTouchDistance>0) zoom3DModel(distance/modelTouchDistance);
+                        modelTouchDistance=distance; modelPinching=true;
+                    } else if(!modelPinching) {
+                        float x=event.getX(),y=event.getY();
+                        rotate3DModel((y-modelTouchY)*.55f,(x-modelTouchX)*.55f);
+                        modelTouchX=x; modelTouchY=y;
+                    }
+                    return true;
+                }
+                if(action==MotionEvent.ACTION_POINTER_UP || action==MotionEvent.ACTION_UP || action==MotionEvent.ACTION_CANCEL) {
+                    modelPinching=false; modelTouchDistance=0; return true;
+                }
+                return true;
+            }
             scaleDetector.onTouchEvent(event);
             float base=Math.min((float)getWidth()/1600f,(float)getHeight()/canvasHeight);
             float scale=base*zoom;
