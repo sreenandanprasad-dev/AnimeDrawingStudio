@@ -24,7 +24,8 @@ public class AnimeBaseView extends GLSurfaceView {
         setEGLContextClientVersion(1);
         setEGLConfigChooser(8,8,8,8,16,0);
         getHolder().setFormat(PixelFormat.TRANSLUCENT);
-        setZOrderMediaOverlay(true);
+        setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        setZOrderOnTop(true);
         setPreserveEGLContextOnPause(true);
         renderer=new BaseRenderer(model);
         setRenderer(renderer);
@@ -140,11 +141,13 @@ public class AnimeBaseView extends GLSurfaceView {
 
     private static class BaseRenderer implements Renderer {
         private final FloatBuffer vertices,colors;
+        private final float[] originalColors;
         private final int count;
         private float rx=-8,ry=18,zoom=1f;
         BaseRenderer(int model) {
             Mesh m=build(model);
             float[] p=m.positions(),c=m.colors();count=p.length/3;
+            originalColors=c.clone();
             ByteBuffer pb=ByteBuffer.allocateDirect(p.length*4).order(ByteOrder.nativeOrder());
             vertices=pb.asFloatBuffer();vertices.put(p).position(0);
             ByteBuffer cb=ByteBuffer.allocateDirect(c.length*4).order(ByteOrder.nativeOrder());
@@ -154,10 +157,8 @@ public class AnimeBaseView extends GLSurfaceView {
         synchronized void zoom(float f){if(f>0&&!Float.isNaN(f))zoom=Math.max(.45f,Math.min(4f,zoom*f));}
 
         synchronized void setOpacity(float opacity){
-            for(int i=3;i<colors.capacity();i+=4){
-                float base=colors.get(i);
-                colors.put(i,Math.min(1f,base)*opacity);
-            }
+            for(int i=3;i<originalColors.length;i+=4)
+                colors.put(i,Math.min(1f,originalColors[i])*opacity);
         }
 
         private static Mesh build(int model) {
