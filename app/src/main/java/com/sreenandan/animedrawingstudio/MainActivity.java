@@ -503,7 +503,7 @@ public class MainActivity extends Activity {
     private void showMoreActions() {
         String[] actions = {"Reset canvas view","Clear selection","Duplicate selection",
                 "Flip selection horizontally","Flip selection vertically","Delete selection",
-                "Select all","Toggle grid","Toggle symmetry","Change canvas background"};
+                "Select all","Toggle grid","Toggle symmetry","Change canvas background","Grid spacing"};
         new AlertDialog.Builder(this)
                 .setTitle("Studio tools")
                 .setItems(actions,(dialog,which) -> {
@@ -525,6 +525,15 @@ public class MainActivity extends Activity {
                             break;
                         case 9:
                             showCanvasBackgroundOptions();
+                            break;
+                        case 10:
+                            String[] gridOptions={"25 px","50 px","100 px","200 px","400 px"};
+                            new AlertDialog.Builder(this).setTitle("Grid spacing")
+                                    .setItems(gridOptions,(gridDialog,gridChoice)->{
+                                        int[] spacings={25,50,100,200,400};
+                                        drawingView.setGridSpacing(spacings[gridChoice]);
+                                        Toast.makeText(this,"Grid spacing: "+spacings[gridChoice]+" px",Toast.LENGTH_SHORT).show();
+                                    }).show();
                             break;
                     }
                 }).show();
@@ -1312,6 +1321,7 @@ public class MainActivity extends Activity {
         private int selectionBitmapLeft,selectionBitmapTop;
         private boolean symmetryEnabled=false;
         private boolean gridEnabled=false;
+        private int gridSpacing=100;
         private int shapeTool=0;
         private boolean shapeInProgress=false;
         private float shapeStartX,shapeStartY,shapeEndX,shapeEndY;
@@ -1609,6 +1619,10 @@ public class MainActivity extends Activity {
 
         boolean isGridEnabled() { return gridEnabled; }
         void setGridEnabled(boolean enabled) { gridEnabled=enabled; invalidate(); }
+        void setGridSpacing(int spacing) {
+            gridSpacing=Math.max(25,Math.min(400,spacing));
+            invalidate();
+        }
 
         ArrayList<String> getLayerNames() {
             ArrayList<String> result=new ArrayList<>();
@@ -2144,8 +2158,8 @@ public class MainActivity extends Activity {
                 Paint gridPaint = new Paint();
                 gridPaint.setColor(Color.argb(42,70,110,150));
                 gridPaint.setStrokeWidth(1f/(scale*zoom));
-                for (int gx=100;gx<canvasWidth;gx+=100) canvas.drawLine(gx,0,gx,canvasHeight,gridPaint);
-                for (int gy=100;gy<canvasHeight;gy+=100) canvas.drawLine(0,gy,canvasWidth,gy,gridPaint);
+                for (int gx=gridSpacing;gx<canvasWidth;gx+=gridSpacing) canvas.drawLine(gx,0,gx,canvasHeight,gridPaint);
+                for (int gy=gridSpacing;gy<canvasHeight;gy+=gridSpacing) canvas.drawLine(0,gy,canvasWidth,gy,gridPaint);
             }
             if (symmetryEnabled) {
                 Paint axis = new Paint(Paint.ANTI_ALIAS_FLAG);
