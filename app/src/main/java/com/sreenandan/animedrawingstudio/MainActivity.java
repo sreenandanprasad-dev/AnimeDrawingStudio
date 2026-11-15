@@ -225,7 +225,7 @@ public class MainActivity extends Activity {
         final int[] chosenBackground={Color.WHITE};
         backgrounds.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener() {
             public void onItemSelected(android.widget.AdapterView<?> parent,View view,int position,long id) {
-                if(position==2) showColorWheel(color -> chosenBackground[0]=color);
+                if(position==2) showColorWheel(chosenBackground[0],false,color -> chosenBackground[0]=color);
             }
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
@@ -737,21 +737,21 @@ public class MainActivity extends Activity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    private void showColorWheel() { showColorWheel(null); }
+    private void showColorWheel() { showColorWheel(currentColor,true,null); }
 
-    private void showColorWheel(java.util.function.IntConsumer onSelected) {
+    private void showColorWheel(int initialColor,boolean applyToBrush,java.util.function.IntConsumer onSelected) {
         LinearLayout panel = new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setGravity(Gravity.CENTER_HORIZONTAL);
         panel.setPadding(dp(12),dp(8),dp(12),dp(4));
 
         ColorWheelView wheel = new ColorWheelView();
-        wheel.setColor(currentColor);
+        wheel.setColor(initialColor);
         TextView preview = new TextView(this);
         preview.setText("Selected colour");
         preview.setGravity(Gravity.CENTER);
         preview.setTextColor(Color.BLACK);
-        preview.setBackgroundColor(currentColor);
+        preview.setBackgroundColor(initialColor);
         LinearLayout.LayoutParams previewParams = new LinearLayout.LayoutParams(-1,dp(34));
         previewParams.bottomMargin = dp(6);
         panel.addView(preview,previewParams);
@@ -765,7 +765,7 @@ public class MainActivity extends Activity {
         brightness.setMax(100);
         brightness.setProgress(100);
         panel.addView(brightness,new LinearLayout.LayoutParams(-1,dp(36)));
-        final int[] selected = {currentColor};
+        final int[] selected = {initialColor};
         wheel.setOnColorChanged(color -> {
             selected[0] = color;
             preview.setBackgroundColor(color);
@@ -785,7 +785,7 @@ public class MainActivity extends Activity {
                 .setNegativeButton("Cancel",null)
                 .setPositiveButton("Use colour",(dialog,which) -> {
                     // Keep the currently selected tool (especially Bucket Fill) active.
-                    currentColor = selected[0];
+                    if(applyToBrush) currentColor = selected[0];
                     if(onSelected!=null) onSelected.accept(selected[0]);
                 })
                 .show();
