@@ -554,7 +554,7 @@ public class MainActivity extends Activity {
         String[] actions = {"Reset canvas view","Clear selection","Duplicate selection",
                 "Flip selection horizontally","Flip selection vertically","Delete selection",
                 "Select all","Toggle grid","Toggle symmetry","Change canvas background","Grid spacing",
-                "Open 3D model (.obj)"};
+                "Built-in Anime Base Models","Import 3D model (.obj)"};
         new AlertDialog.Builder(this)
                 .setTitle("Studio tools")
                 .setItems(actions,(dialog,which) -> {
@@ -587,10 +587,36 @@ public class MainActivity extends Activity {
                                     }).show();
                             break;
                         case 11:
+                            showBuiltInAnimeBases();
+                            break;
+                        case 12:
                             open3DModel();
                             break;
                     }
                 }).show();
+    }
+
+    private void showBuiltInAnimeBases() {
+        String[] models={"Standing anime base","T-pose reference base","Seated anime base"};
+        new AlertDialog.Builder(this).setTitle("Anime Base Model Library")
+                .setItems(models,(dialog,which)->showAnimeBaseViewer(which,models[which])).show();
+    }
+
+    private void showAnimeBaseViewer(int model,String name) {
+        LinearLayout panel=new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        TextView instructions=new TextView(this);
+        instructions.setText("Drag with one finger to rotate • Pinch with two fingers to zoom\\nBuilt-in 3D drawing reference");
+        instructions.setTextColor(Color.rgb(25,74,112));
+        instructions.setPadding(dp(10),dp(8),dp(10),dp(8));
+        panel.addView(instructions);
+        AnimeBaseView modelView=new AnimeBaseView(this,model);
+        panel.addView(modelView,new LinearLayout.LayoutParams(-1,dp(430)));
+        AlertDialog viewer=new AlertDialog.Builder(this).setTitle(name)
+                .setView(panel).setPositiveButton("Close",null).create();
+        viewer.setOnShowListener(d->modelView.onResume());
+        viewer.setOnDismissListener(d->modelView.onPause());
+        viewer.show();
     }
 
     private static final int REQUEST_3D_MODEL = 7401;
