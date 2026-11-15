@@ -96,11 +96,11 @@ public class MainActivity extends Activity {
         android.database.Cursor cursor=null;
         try {
             String[] projection={MediaStore.Images.Media._ID,MediaStore.Images.Media.DISPLAY_NAME};
-            String selection=null;
-            String[] selectionArgs=null;
+            String selection=MediaStore.Images.Media.DISPLAY_NAME+" LIKE ?";
+            String[] selectionArgs=new String[]{"AnimeDrawing%"};
             if(Build.VERSION.SDK_INT>=29) {
-                selection=MediaStore.Images.Media.RELATIVE_PATH+"=?";
-                selectionArgs=new String[]{"Pictures/AnimeDrawingStudio/"};
+                selection=MediaStore.Images.Media.RELATIVE_PATH+"=? AND "+MediaStore.Images.Media.DISPLAY_NAME+" LIKE ?";
+                selectionArgs=new String[]{"Pictures/AnimeDrawingStudio/","AnimeDrawing%"};
             }
             cursor=getContentResolver().query(MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
                     projection,selection,selectionArgs,MediaStore.Images.Media.DATE_ADDED+" DESC");
@@ -173,7 +173,7 @@ public class MainActivity extends Activity {
     }
 
     private void showDrawingStudio() {
-        super.onCreate(state);
+        studioVisible=true;
         getWindow().setStatusBarColor(Color.rgb(38,112,171));
         getWindow().setNavigationBarColor(Color.rgb(207,235,246));
 
