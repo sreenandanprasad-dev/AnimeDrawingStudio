@@ -85,18 +85,17 @@ public class AnimeBaseView extends GLSurfaceView {
         void loft(float[][] rings,int sides,int color){
             for(int r=0;r<rings.length-1;r++) for(int s=0;s<sides;s++){
                 int n=sides, s2=(s+1)%n;
-                float[] a= rings[r*1]; // keeps the ring layout explicit for the mesh builder
                 float[] p1=ringPoint(rings,r,s,n),p2=ringPoint(rings,r,s2,n);
                 float[] p3=ringPoint(rings,r+1,s2,n),p4=ringPoint(rings,r+1,s,n);
                 tri(p1,p2,p3,color);tri(p1,p3,p4,color);
             }
         }
         float[] ringPoint(float[][] rings,int r,int s,int n){
-            float[] q=rings[r*3], out=new float[3];
+            float[] q=rings[r], out=new float[3];
             double a=2*Math.PI*s/n;
             out[0]=q[0]+(float)Math.cos(a)*q[3];
-            out[1]=q[1]+(float)Math.sin(a)*q[4];
-            out[2]=q[2]+(float)Math.cos(a)*q[5];
+            out[1]=q[1];
+            out[2]=q[2]+(float)Math.sin(a)*q[5];
             return out;
         }
         void tube(float[] a,float[] b,float ra,float rb,int color){
