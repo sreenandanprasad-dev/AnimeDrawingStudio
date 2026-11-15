@@ -524,13 +524,27 @@ public class MainActivity extends Activity {
                             Toast.makeText(this,drawingView.isSymmetryEnabled()?"Symmetry on":"Symmetry off",Toast.LENGTH_SHORT).show();
                             break;
                         case 9:
-                            int background=drawingView.getCanvasBackground();
-                            showColorWheel(background==Color.TRANSPARENT?Color.WHITE:background,false,
-                                    color -> {
-                                        drawingView.setCanvasBackground(color);
-                                        Toast.makeText(this,"Canvas background changed",Toast.LENGTH_SHORT).show();
-                                    });
+                            showCanvasBackgroundOptions();
                             break;
+                    }
+                }).show();
+    }
+
+    private void showCanvasBackgroundOptions() {
+        String[] options={"Choose colour","White","Transparent"};
+        new AlertDialog.Builder(this)
+                .setTitle("Canvas background")
+                .setItems(options,(dialog,which)->{
+                    if(which==0) {
+                        int background=drawingView.getCanvasBackground();
+                        showColorWheel(background==Color.TRANSPARENT?Color.WHITE:background,false,
+                                color -> {
+                                    drawingView.setCanvasBackground(color);
+                                    Toast.makeText(this,"Canvas background changed",Toast.LENGTH_SHORT).show();
+                                });
+                    } else {
+                        drawingView.setCanvasBackground(which==1?Color.WHITE:Color.TRANSPARENT);
+                        Toast.makeText(this,which==1?"White background applied":"Transparent background applied",Toast.LENGTH_SHORT).show();
                     }
                 }).show();
     }
