@@ -72,61 +72,63 @@ public class AnimeBaseView extends GLSurfaceView {
     }
 
     private static class Mesh {
-        final ArrayList<Float> p=new ArrayList<>();
-        final ArrayList<Float> c=new ArrayList<>();
-        void vertex(float x,float y,float z,int color) {
+        final ArrayList<Float> p=new ArrayList<>(), c=new ArrayList<>();
+        void vertex(float x,float y,float z,int color){
             p.add(x);p.add(y);p.add(z);
-            c.add(((color>>16)&255)/255f);
-            c.add(((color>>8)&255)/255f);
-            c.add((color&255)/255f);
-            c.add(((color>>>24)&255)/255f);
+            c.add(((color>>16)&255)/255f);c.add(((color>>8)&255)/255f);
+            c.add((color&255)/255f);c.add(((color>>>24)&255)/255f);
         }
-        void tri(float[] a,float[] b,float[] d,int color) {
+        void tri(float[] a,float[] b,float[] d,int color){
             vertex(a[0],a[1],a[2],color);vertex(b[0],b[1],b[2],color);vertex(d[0],d[1],d[2],color);
         }
-        void ellipsoid(float x,float y,float z,float rx,float ry,float rz,int color) {
-            int rings=10,sectors=16;
-            for(int r=0;r<rings;r++) {
-                double a1=-Math.PI/2+Math.PI*r/rings,a2=-Math.PI/2+Math.PI*(r+1)/rings;
-                for(int s=0;s<sectors;s++) {
-                    double b1=2*Math.PI*s/sectors,b2=2*Math.PI*(s+1)/sectors;
-                    float[] v1=point(x,y,z,rx,ry,rz,a1,b1);
-                    float[] v2=point(x,y,z,rx,ry,rz,a2,b1);
-                    float[] v3=point(x,y,z,rx,ry,rz,a2,b2);
-                    float[] v4=point(x,y,z,rx,ry,rz,a1,b2);
-                    tri(v1,v2,v3,color);tri(v1,v3,v4,color);
-                }
-            }
-        }
-        float[] point(float x,float y,float z,float rx,float ry,float rz,double a,double b) {
-            return new float[]{x+(float)(rx*Math.cos(a)*Math.cos(b)),
-                    y+(float)(ry*Math.sin(a)),z+(float)(rz*Math.cos(a)*Math.sin(b))};
-        }
-        void limb(float[] a,float[] b,float radiusA,float radiusB,int color) {
-            float dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
-            float len=(float)Math.sqrt(dx*dx+dy*dy+dz*dz);
-            if(len<0.0001f)return;
-            float ux=dx/len,uy=dy/len,uz=dz/len;
-            float ax=-uy,ay=ux,az=0;
-            float al=(float)Math.sqrt(ax*ax+ay*ay+az*az);
-            if(al<0.001f){ax=1;ay=0;az=0;al=1;}
-            ax/=al;ay/=al;az/=al;
-            float bx=uy*az-uz*ay,by=uz*ax-ux*az,bz=ux*ay-uy*ax;
-            int sides=12;
-            for(int i=0;i<sides;i++) {
-                double t1=2*Math.PI*i/sides,t2=2*Math.PI*(i+1)/sides;
-                float[] p1=ring(a,ax,ay,az,bx,by,bz,radiusA,t1);
-                float[] p2=ring(a,ax,ay,az,bx,by,bz,radiusA,t2);
-                float[] p3=ring(b,ax,ay,az,bx,by,bz,radiusB,t2);
-                float[] p4=ring(b,ax,ay,az,bx,by,bz,radiusB,t1);
+        // A continuous surface made from shaped cross-sections, not stacked primitives.
+        void loft(float[][] rings,int sides,int color){
+            for(int r=0;r<rings.length-1;r++) for(int s=0;s<sides;s++){
+                int n=sides, s2=(s+1)%n;
+                float[] a= rings[r*1]; // keeps the ring layout explicit for the mesh builder
+                float[] p1=ringPoint(rings,r,s,n),p2=ringPoint(rings,r,s2,n);
+                float[] p3=ringPoint(rings,r+1,s2,n),p4=ringPoint(rings,r+1,s,n);
                 tri(p1,p2,p3,color);tri(p1,p3,p4,color);
             }
-            ellipsoid(a[0],a[1],a[2],radiusA,radiusA,radiusA,color);
-            ellipsoid(b[0],b[1],b[2],radiusB,radiusB,radiusB,color);
         }
-        float[] ring(float[] c,float ax,float ay,float az,float bx,float by,float bz,float r,double t) {
-            float co=(float)Math.cos(t)*r,si=(float)Math.sin(t)*r;
-            return new float[]{c[0]+ax*co+bx*si,c[1]+ay*co+by*si,c[2]+az*co+bz*si};
+        float[] ringPoint(float[][] rings,int r,int s,int n){
+            float[] q=rings[r*3], out=new float[3];
+            double a=2*Math.PI*s/n;
+            out[0]=q[0]+(float)Math.cos(a)*q[3];
+            out[1]=q[1]+(float)Math.sin(a)*q[4];
+            out[2]=q[2]+(float)Math.cos(a)*q[5];
+            return out;
+        }
+        void tube(float[] a,float[] b,float ra,float rb,int color){
+            float dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
+            float len=(float)Math.sqrt(dx*dx+dy*dy+dz*dz); if(len<.0001f)return;
+            float ux=dx/len,uy=dy/len,uz=dz/len;
+            float ax=-uy,ay=ux,az=0,al=(float)Math.sqrt(ax*ax+ay*ay);
+            if(al<.001f){ax=1;ay=0;al=1;} ax/=al;ay/=al;
+            float bx=uy*az-uz*ay,by=uz*ax-ux*az,bz=ux*ay-uy*ax;
+            int steps=8,sides=12;
+            for(int i=0;i<steps;i++) for(int s=0;s<sides;s++){
+                float t1=(float)i/steps,t2=(float)(i+1)/steps;
+                float r1=ra+(rb-ra)*t1,r2=ra+(rb-ra)*t2;
+                float[] p1=around(a,b,ax,ay,az,bx,by,bz,t1,r1,s,sides);
+                float[] p2=around(a,b,ax,ay,az,bx,by,bz,t1,r1,(s+1)%sides,sides);
+                float[] p3=around(a,b,ax,ay,az,bx,by,bz,t2,r2,(s+1)%sides,sides);
+                float[] p4=around(a,b,ax,ay,az,bx,by,bz,t2,r2,s,sides);
+                tri(p1,p2,p3,color);tri(p1,p3,p4,color);
+            }
+        }
+        float[] around(float[] a,float[] b,float ax,float ay,float az,float bx,float by,float bz,float t,float r,int s,int n){
+            double ang=2*Math.PI*s/n;float co=(float)Math.cos(ang)*r,si=(float)Math.sin(ang)*r;
+            return new float[]{a[0]+(b[0]-a[0])*t+ax*co+bx*si,
+                a[1]+(b[1]-a[1])*t+ay*co+by*si,a[2]+(b[2]-a[2])*t+az*co+bz*si};
+        }
+        void almond(float x,float y,float z,float w,float h,int color){
+            int steps=16; float[] center={x,y,z};
+            for(int i=0;i<steps;i++){
+                double a=2*Math.PI*i/steps,b=2*Math.PI*(i+1)/steps;
+                tri(center,new float[]{x+w*(float)Math.cos(a),y+h*(float)Math.sin(a),z},
+                    new float[]{x+w*(float)Math.cos(b),y+h*(float)Math.sin(b),z},color);
+            }
         }
         float[] positions(){float[] a=new float[p.size()];for(int i=0;i<a.length;i++)a[i]=p.get(i);return a;}
         float[] colors(){float[] a=new float[c.size()];for(int i=0;i<a.length;i++)a[i]=c.get(i);return a;}
@@ -149,91 +151,78 @@ public class AnimeBaseView extends GLSurfaceView {
 
         private static Mesh build(int model) {
             Mesh m=new Mesh();
-            int skin=0xFFFFC69F,skinShade=0xFFE9A77F;
-            int hair=0xFF26364D,hairLight=0xFF405A7A;
-            int cloth=0xFF42A9D5,clothShade=0xFF2479B2;
-            int skirt=0xFF354C75,shoe=0xFF26364D;
-            int white=0xFFFFF8F1,iris=0xFF55A8D8,pupil=0xFF172D4C;
-
-            // Head and jaw: a deliberately stylized anime silhouette.
-            m.ellipsoid(0,1.405f,0,.285f,.365f,.255f,skin);
-            m.ellipsoid(0,1.675f,-.025f,.302f,.185f,.275f,hair);
-            // Side/back hair locks frame the face.
-            m.ellipsoid(-.235f,1.445f,-.015f,.085f,.285f,.105f,hair);
-            m.ellipsoid(.235f,1.445f,-.015f,.085f,.285f,.105f,hair);
-            m.ellipsoid(-.255f,1.265f,-.005f,.055f,.17f,.07f,hairLight);
-            m.ellipsoid(.255f,1.265f,-.005f,.055f,.17f,.07f,hairLight);
-            // Layered fringe, with pointed locks over the forehead.
-            m.ellipsoid(-.13f,1.57f,.205f,.13f,.13f,.095f,hair);
-            m.ellipsoid(0,1.59f,.235f,.13f,.15f,.085f,hairLight);
-            m.ellipsoid(.13f,1.56f,.205f,.13f,.13f,.095f,hair);
-            m.limb(new float[]{-.20f,1.58f,.235f},new float[]{-.10f,1.43f,.275f},.055f,.012f,hair);
-            m.limb(new float[]{-.04f,1.62f,.285f},new float[]{.015f,1.435f,.285f},.060f,.012f,hairLight);
-            m.limb(new float[]{.14f,1.58f,.235f},new float[]{.105f,1.445f,.275f},.055f,.012f,hair);
-            // Anime eyes: whites, large irises, pupils and small highlights.
-            for(int side=0;side<2;side++) {
+            int skin=0xFFFFC69F, shade=0xFFE9A77F, hair=0xFF26364D, hair2=0xFF405A7A;
+            int top=0xFF42A9D5, topShade=0xFF2479B2, bottom=0xFF354C75, shoe=0xFF26364D;
+            int white=0xFFFFF8F1, iris=0xFF55A8D8, pupil=0xFF172D4C;
+            // Head silhouette: broad cranium tapering through cheeks into a manga chin.
+            float[][] head={
+                {0,1.18f,0,.115f,.11f,.13f},{0,1.25f,0,.205f,.16f,.19f},
+                {0,1.36f,0,.255f,.22f,.225f},{0,1.49f,0,.275f,.25f,.235f},
+                {0,1.62f,-.005f,.27f,.24f,.23f},{0,1.72f,-.015f,.20f,.18f,.18f},
+                {0,1.77f,-.015f,.08f,.08f,.08f}};
+            m.loft(head,24,skin);
+            // Neck and unified torso silhouette with shoulders, ribcage, waist and pelvis.
+            m.tube(new float[]{0,1.08f,0},new float[]{0,1.24f,0},.075f,.085f,skin);
+            float[][] torso={
+                {0,.34f,0,.20f,.15f,.16f},{0,.43f,0,.29f,.19f,.19f},
+                {0,.58f,0,.255f,.18f,.18f},{0,.72f,0,.205f,.17f,.16f},
+                {0,.88f,0,.255f,.19f,.17f},{0,1.00f,0,.31f,.18f,.16f},
+                {0,1.08f,0,.22f,.14f,.13f}};
+            m.loft(torso,24,top);
+            // Pelvis and clothing form one broad manga mannequin base.
+            float[][] pelvis={{0,.18f,0,.19f,.14f,.15f},{0,.25f,0,.28f,.17f,.18f},{0,.40f,0,.29f,.18f,.18f}};
+            m.loft(pelvis,24,bottom);
+            // Face details are shallow graphic forms on the front plane.
+            for(int side=0;side<2;side++){
                 float x=side==0?-.105f:.105f;
-                m.ellipsoid(x,1.435f,.235f,.073f,.095f,.030f,white);
-                m.ellipsoid(x,1.432f,.260f,.043f,.068f,.020f,iris);
-                m.ellipsoid(x,1.425f,.276f,.022f,.045f,.012f,pupil);
-                m.ellipsoid(x-.012f,1.458f,.288f,.012f,.018f,.008f,white);
-                m.limb(new float[]{x-.068f,1.505f,.255f},new float[]{x+.055f,1.505f,.255f},.012f,.012f,hair);
-                m.ellipsoid(side==0?-.285f:.285f,1.405f,0,.035f,.060f,.045f,skinShade);
+                m.almond(x,1.405f,.224f,.078f,.045f,white);
+                m.almond(x,1.405f,.229f,.039f,.041f,iris);
+                m.almond(x,1.402f,.233f,.020f,.032f,pupil);
+                m.almond(x-.012f,1.422f,.237f,.010f,.012f,white);
+                m.tube(new float[]{x-.075f,1.47f,.226f},new float[]{x+.065f,1.47f,.226f},.012f,.009f,hair);
+                m.tube(new float[]{side==0?-.27f:.27f,1.37f,0},new float[]{side==0?-.25f:.25f,1.48f,0},.035f,.035f,shade);
             }
-            // Nose and a subtle mouth.
-            m.ellipsoid(0,1.365f,.267f,.018f,.025f,.012f,skinShade);
-            m.limb(new float[]{-.027f,1.315f,.258f},new float[]{.027f,1.315f,.258f},.006f,.006f,0xFF9D5360);
-            // Neck, sailor-style collar, fitted top and skirt.
-            m.limb(new float[]{0,1.04f,0},new float[]{0,1.16f,0},.09f,.09f,skin);
-            m.ellipsoid(0,.91f,0,.265f,.24f,.19f,cloth);
-            m.ellipsoid(0,.765f,.005f,.285f,.23f,.20f,clothShade);
-            m.limb(new float[]{-.17f,1.02f,.12f},new float[]{0,.88f,.205f},.035f,.012f,white);
-            m.limb(new float[]{.17f,1.02f,.12f},new float[]{0,.88f,.205f},.035f,.012f,white);
-            m.ellipsoid(0,.865f,.215f,.045f,.065f,.025f,0xFFE45C75);
-            m.ellipsoid(0,.49f,0,.30f,.22f,.205f,skirt);
-            m.limb(new float[]{-.22f,.39f,.12f},new float[]{.22f,.39f,.12f},.018f,.018f,0xFF8CA9C9);
-
-            float[][] shoulder={{-.27f,.94f,0},{.27f,.94f,0}};
-            float[][] elbow=new float[2][3],wrist=new float[2][3];
-            for(int side=0;side<2;side++) {
+            m.tube(new float[]{0,1.36f,.235f},new float[]{0,1.33f,.247f},.012f,.006f,shade);
+            m.tube(new float[]{-.025f,1.285f,.221f},new float[]{.025f,1.285f,.221f},.006f,.006f,0xFF9D5360);
+            // Hair cap and tapered locks; deliberately graphic, with pointed fringe.
+            float[][] cap={{0,1.51f,-.01f,.26f,.22f,.23f},{0,1.62f,-.01f,.28f,.20f,.24f},{0,1.72f,-.01f,.22f,.16f,.20f},{0,1.78f,-.01f,.06f,.06f,.07f}};
+            m.loft(cap,24,hair);
+            m.tube(new float[]{-.20f,1.62f,.16f},new float[]{-.10f,1.40f,.22f},.07f,.008f,hair2);
+            m.tube(new float[]{-.06f,1.68f,.20f},new float[]{.015f,1.40f,.24f},.065f,.008f,hair);
+            m.tube(new float[]{.12f,1.65f,.17f},new float[]{.10f,1.42f,.23f},.065f,.008f,hair2);
+            m.tube(new float[]{-.25f,1.55f,-.02f},new float[]{-.24f,1.22f,-.015f},.065f,.012f,hair);
+            m.tube(new float[]{.25f,1.55f,-.02f},new float[]{.24f,1.22f,-.015f},.065f,.012f,hair);
+            // Collar and simple garment seams.
+            m.tube(new float[]{-.17f,1.00f,.12f},new float[]{0,.88f,.19f},.025f,.008f,white);
+            m.tube(new float[]{.17f,1.00f,.12f},new float[]{0,.88f,.19f},.025f,.008f,white);
+            m.almond(0,.88f,.205f,.035f,.05f,0xFFE45C75);
+            // Arms are tapered, curved surface tubes with softly changing widths.
+            for(int side=0;side<2;side++){
                 float s=side==0?-1:1;
-                if(model==1) {
-                    elbow[side]=new float[]{s*.58f,.94f,0};
-                    wrist[side]=new float[]{s*.87f,.94f,0};
-                } else if(model==2) {
-                    elbow[side]=new float[]{s*.52f,.62f,.02f};
-                    wrist[side]=new float[]{s*.40f,.34f,.08f};
-                } else {
-                    elbow[side]=new float[]{s*.52f,.66f,0};
-                    wrist[side]=new float[]{s*.66f,.31f,.03f};
+                float[] shoulder={s*.27f,.96f,0};
+                float[] elbow=model==1?new float[]{s*.58f,.94f,0}:model==2?new float[]{s*.49f,.62f,.02f}:new float[]{s*.50f,.66f,0};
+                float[] wrist=model==1?new float[]{s*.87f,.94f,0}:model==2?new float[]{s*.40f,.34f,.08f}:new float[]{s*.66f,.31f,.03f};
+                m.tube(shoulder,elbow,.105f,.068f,top);
+                m.tube(elbow,wrist,.068f,.043f,skin);
+                float hx=wrist[0],hy=wrist[1]-.035f,hz=wrist[2]+.015f;
+                // Palm plus individually tapered fingers and an angled thumb.
+                m.tube(new float[]{hx,hy+.035f,hz},new float[]{hx,hy-.045f,hz+.01f},.052f,.043f,skin);
+                for(int f=0;f<4;f++){
+                    float fx=hx+s*((f-1.5f)*.024f);
+                    m.tube(new float[]{fx,hy-.025f,hz+.012f},new float[]{fx+s*.004f,hy-.105f-(f==1||f==2?.012f:0),hz+.015f},.014f,.006f,skin);
                 }
-                m.limb(shoulder[side],elbow[side],.105f,.075f,cloth);
-                m.limb(elbow[side],wrist[side],.075f,.052f,skin);
-                m.ellipsoid(wrist[side][0],wrist[side][1]-.035f,wrist[side][2],.065f,.075f,.052f,skin);
-                // Simple separated fingers make the hands readable at drawing scale.
-                for(int finger=0;finger<4;finger++) {
-                    float fx=wrist[side][0]+s*((finger-1.5f)*.025f);
-                    m.limb(new float[]{fx,wrist[side][1]-.075f,wrist[side][2]+.018f},
-                            new float[]{fx+s*.006f,wrist[side][1]-.125f,wrist[side][2]+.02f},.012f,.008f,skin);
-                }
+                m.tube(new float[]{hx-s*.04f,hy+.005f,hz},new float[]{hx-s*.085f,hy-.045f,hz+.02f},.018f,.007f,skin);
             }
-
-            for(int side=0;side<2;side++) {
+            // Legs: continuous tapered thigh-to-calf contours, ankles and wedge-shaped feet.
+            for(int side=0;side<2;side++){
                 float s=side==0?-1:1;
-                float[] hip={s*.15f,.34f,0};
-                float[] knee,ankle,foot;
-                if(model==2) {
-                    knee=new float[]{s*.43f,-.15f,.10f};
-                    ankle=new float[]{s*.48f,-.48f,.12f};
-                    foot=new float[]{s*.48f,-.54f,.20f};
-                } else {
-                    knee=new float[]{s*.18f,-.28f,0};
-                    ankle=new float[]{s*.19f,-.91f,.015f};
-                    foot=new float[]{s*.19f,-.99f,.10f};
-                }
-                m.limb(hip,knee,.13f,.10f,skinShade);
-                m.limb(knee,ankle,.095f,.062f,skin);
-                m.ellipsoid(foot[0],foot[1],foot[2],.105f,.065f,.19f,shoe);
+                float[] hip={s*.15f,.27f,0};
+                float[] knee=model==2?new float[]{s*.43f,-.15f,.10f}:new float[]{s*.18f,-.28f,0};
+                float[] ankle=model==2?new float[]{s*.48f,-.48f,.12f}:new float[]{s*.19f,-.91f,.015f};
+                float[] toe=model==2?new float[]{s*.48f,-.54f,.20f}:new float[]{s*.19f,-.99f,.10f};
+                m.tube(hip,knee,.125f,.085f,skin);
+                m.tube(knee,ankle,.085f,.052f,skin);
+                m.tube(ankle,toe,.055f,.035f,shoe);
             }
             return m;
         }
