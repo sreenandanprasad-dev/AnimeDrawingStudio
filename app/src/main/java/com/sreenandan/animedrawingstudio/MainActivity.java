@@ -1197,10 +1197,6 @@ public class MainActivity extends Activity {
         private final int canvasWidth;
         private final int canvasHeight;
         private final int canvasBackground;
-        DrawingView(int width,int height,int background) {
-            super(MainActivity.this);
-            canvasWidth=width; canvasHeight=height; canvasBackground=background;
-        }
         private class Layer {
             Bitmap bitmap;
             String name;
@@ -1294,8 +1290,9 @@ public class MainActivity extends Activity {
         private int pendingFillX=0, pendingFillY=0;
         private final ScaleGestureDetector scaleDetector;
 
-        DrawingView() {
+        DrawingView(int width,int height,int background) {
             super(MainActivity.this);
+            canvasWidth=width; canvasHeight=height; canvasBackground=background;
             setLayerType(View.LAYER_TYPE_SOFTWARE,null);
             layers.add(new Layer("Layer 1"));
             paint.setColor(Color.BLACK);
