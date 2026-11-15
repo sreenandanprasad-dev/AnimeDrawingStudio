@@ -35,6 +35,11 @@ public class AnimeBaseView extends GLSurfaceView {
         interactionEnabled=enabled;
     }
 
+    public void setModelOpacity(float opacity) {
+        final float value=Math.max(0f,Math.min(1f,opacity));
+        queueEvent(()->renderer.setOpacity(value));
+    }
+
     @Override public boolean onTouchEvent(MotionEvent e) {
         if(!interactionEnabled) return false;
         int n=e.getPointerCount();
@@ -147,6 +152,13 @@ public class AnimeBaseView extends GLSurfaceView {
         }
         synchronized void rotate(float x,float y){rx=Math.max(-85,Math.min(85,rx+x));ry=(ry+y)%360;}
         synchronized void zoom(float f){if(f>0&&!Float.isNaN(f))zoom=Math.max(.45f,Math.min(4f,zoom*f));}
+
+        synchronized void setOpacity(float opacity){
+            for(int i=3;i<colors.capacity();i+=4){
+                float base=colors.get(i);
+                colors.put(i,Math.min(1f,base)*opacity);
+            }
+        }
 
         private static Mesh build(int model) {
             Mesh m=new Mesh();
