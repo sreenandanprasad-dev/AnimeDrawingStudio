@@ -658,6 +658,10 @@ public class MainActivity extends Activity {
             modeButton.setText(baseAdjustMode?"Draw":"Adjust");
             Toast.makeText(this,baseAdjustMode?"3D reference adjustment enabled":"Drawing enabled",Toast.LENGTH_SHORT).show();
         });
+        Button poseButton=new Button(this);
+        poseButton.setText("Pose"); poseButton.setTextSize(10); poseButton.setAllCaps(false);
+        controls.addView(poseButton,new LinearLayout.LayoutParams(dp(66),dp(36)));
+        poseButton.setOnClickListener(v->show3DPoseDialog());
         Button applyButton=new Button(this);
         applyButton.setText("Apply 2D"); applyButton.setTextSize(10); applyButton.setAllCaps(false);
         controls.addView(applyButton,new LinearLayout.LayoutParams(dp(88),dp(36)));
@@ -684,6 +688,37 @@ public class MainActivity extends Activity {
         canvas3DControls=controls;
         drawingView.invalidate();
         Toast.makeText(this,name+" added as an editable 3D layer. Choose Adjust to rotate it, then Draw to sketch over it.",Toast.LENGTH_LONG).show();
+    }
+
+    private void show3DPoseDialog() {
+        if(drawingView==null || !drawingView.has3DLayer()) return;
+        LinearLayout panel=new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(dp(16),dp(8),dp(16),dp(8));
+        int[] values={0,0,0,0};
+        String[] labels={"Shoulder spread","Elbow bend","Hip spread","Knee bend"};
+        int[] limits={70,100,45,90};
+        for(int i=0;i<labels.length;i++) {
+            final int index=i;
+            TextView label=new TextView(this); label.setText(labels[i]+"  0°");
+            label.setTextColor(Color.rgb(35,75,105));
+            panel.addView(label);
+            SeekBar slider=new SeekBar(this); slider.setMax(limits[i]*2); slider.setProgress(limits[i]);
+            panel.addView(slider,new LinearLayout.LayoutParams(-1,dp(38)));
+            slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+                public void onProgressChanged(SeekBar bar,int progress,boolean fromUser) {
+                    values[index]=progress-limits[index];
+                    label.setText(labels[index]+"  "+values[index]+"°");
+                    drawingView.set3DPose(values[0],values[1],values[2],values[3]);
+                }
+                public void onStartTrackingTouch(SeekBar bar) {}
+                public void onStopTrackingTouch(SeekBar bar) {}
+            });
+        }
+        new AlertDialog.Builder(this).setTitle("3D Pose Controls").setView(panel)
+                .setNegativeButton("Close",null)
+                .setNeutralButton("Reset", (dialog,which)->drawingView.set3DPose(0,0,0,0))
+                .show();
     }
 
     private void showAnimeBaseViewer(int model,String name) {
@@ -1904,6 +1939,7 @@ public class MainActivity extends Activity {
             if(index>=0) setLayerVisible(index,visible);
         }
         boolean has3DLayer() { return find3DLayerIndex()>=0; }
+        void set3DPose(float arm,float elbow,float leg,float knee) { int index=find3DLayerIndex(); if(index>=0) { layers.get(index).scene.setPose(arm,elbow,leg,knee); invalidate(); } }
         void rotate3DModel(float dx,float dy) {
             int index=find3DLayerIndex();
             if(index>=0) { layers.get(index).scene.rotate(dx,dy); invalidate(); }
