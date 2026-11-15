@@ -131,6 +131,39 @@ public final class AnimeBaseScene {
             out[2]=q[2]+(float)Math.sin(a)*q[5];
             return out;
         }
+        // Swept tube with continuous rings through the elbow/knee instead of
+        // two disconnected cylinders. Each ring follows the local limb direction.
+        void tubePath(float[][] points,float[] radii,int sides,int color) {
+            if(points.length<2 || radii.length!=points.length) return;
+            float[][][] rings=new float[points.length][sides][3];
+            for(int i=0;i<points.length;i++) {
+                float[] before=points[Math.max(0,i-1)];
+                float[] after=points[Math.min(points.length-1,i+1)];
+                float tx=after[0]-before[0],ty=after[1]-before[1],tz=after[2]-before[2];
+                float len=(float)Math.sqrt(tx*tx+ty*ty+tz*tz);
+                if(len<.0001f) continue;
+                tx/=len; ty/=len; tz/=len;
+                float rx=0,ry=0,rz=1;
+                if(Math.abs(tz)>.88f){rx=0;ry=1;rz=0;}
+                float nx=ty*rz-tz*ry,ny=tz*rx-tx*rz,nz=tx*ry-ty*rx;
+                float nl=(float)Math.sqrt(nx*nx+ny*ny+nz*nz);
+                if(nl<.0001f) continue;
+                nx/=nl;ny/=nl;nz/=nl;
+                float bx=ty*nz-tz*ny,by=tz*nx-tx*nz,bz=tx*ny-ty*nx;
+                for(int s=0;s<sides;s++) {
+                    double a=2*Math.PI*s/sides;
+                    float co=(float)Math.cos(a)*radii[i],si=(float)Math.sin(a)*radii[i];
+                    rings[i][s][0]=points[i][0]+nx*co+bx*si;
+                    rings[i][s][1]=points[i][1]+ny*co+by*si;
+                    rings[i][s][2]=points[i][2]+nz*co+bz*si;
+                }
+            }
+            for(int i=0;i<points.length-1;i++) for(int s=0;s<sides;s++) {
+                int n=(s+1)%sides;
+                float[] a=rings[i][s],b=rings[i][n],d=rings[i+1][n],e=rings[i+1][s];
+                tri(a,b,d,color); tri(a,d,e,color);
+            }
+        }
         void tube(float[] a,float[] b,float ra,float rb,int color){
             float dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
             float len=(float)Math.sqrt(dx*dx+dy*dy+dz*dz); if(len<.0001f)return;
@@ -220,8 +253,11 @@ public final class AnimeBaseScene {
                 float[] shoulder={s*.27f,.96f,0};
                 float[] elbow=model==1?new float[]{s*.58f,.94f,0}:model==2?new float[]{s*.49f,.62f,.02f}:new float[]{s*.50f,.66f,0};
                 float[] wrist=model==1?new float[]{s*.87f,.94f,0}:model==2?new float[]{s*.40f,.34f,.08f}:new float[]{s*.66f,.31f,.03f};
-                m.tube(shoulder,elbow,.105f,.068f,top);
-                m.tube(elbow,wrist,.068f,.043f,skin);
+                // One continuous arm surface through shoulder, elbow and wrist.
+                float[] midArm={(shoulder[0]+elbow[0])*.5f,(shoulder[1]+elbow[1])*.5f,(shoulder[2]+elbow[2])*.5f};
+                m.tubePath(new float[][]{shoulder,elbow,wrist},new float[]{.105f,.068f,.043f},16,skin);
+                // Short sleeve overlays the upper arm while keeping the limb underneath continuous.
+                m.tube(shoulder,midArm,.112f,.073f,top);
                 float hx=wrist[0],hy=wrist[1]-.035f,hz=wrist[2]+.015f;
                 // Palm plus individually tapered fingers and an angled thumb.
                 m.tube(new float[]{hx,hy+.035f,hz},new float[]{hx,hy-.045f,hz+.01f},.052f,.043f,skin);
@@ -238,8 +274,8 @@ public final class AnimeBaseScene {
                 float[] knee=model==2?new float[]{s*.43f,-.15f,.10f}:new float[]{s*.18f,-.28f,0};
                 float[] ankle=model==2?new float[]{s*.48f,-.48f,.12f}:new float[]{s*.19f,-.91f,.015f};
                 float[] toe=model==2?new float[]{s*.48f,-.54f,.20f}:new float[]{s*.19f,-.99f,.10f};
-                m.tube(hip,knee,.125f,.085f,skin);
-                m.tube(knee,ankle,.085f,.052f,skin);
+                // Continuous thigh-to-calf surface removes the visible knee seam.
+                m.tubePath(new float[][]{hip,knee,ankle},new float[]{.125f,.085f,.052f},16,skin);
                 m.tube(ankle,toe,.055f,.035f,shoe);
             }
             return m;
