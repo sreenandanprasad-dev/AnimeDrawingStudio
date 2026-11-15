@@ -1,6 +1,7 @@
 package com.sreenandan.animedrawingstudio;
 
 import android.graphics.Canvas;
+import android.graphics.Bitmap;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
@@ -16,6 +17,10 @@ public final class AnimeBaseScene {
     private final float[] positions, colors;
     private float rx=-8f, ry=18f, zoom=1f;
     private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint bitmapPaint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
+    private Bitmap cachedBitmap;
+    private int cachedWidth=0,cachedHeight=0;
+    private boolean dirty=true;
 
     public AnimeBaseScene(int model) {
         mesh=build(model);
@@ -27,9 +32,10 @@ public final class AnimeBaseScene {
     public synchronized void rotate(float dx,float dy) {
         rx=Math.max(-85f,Math.min(85f,rx+dx));
         ry=(ry+dy)%360f;
+        dirty=true;
     }
     public synchronized void zoom(float factor) {
-        if(factor>0f&&!Float.isNaN(factor)) zoom=Math.max(.45f,Math.min(4f,zoom*factor));
+        if(factor>0f&&!Float.isNaN(factor)) { zoom=Math.max(.45f,Math.min(4f,zoom*factor)); dirty=true; }
     }
 
     private static final class Face {
@@ -38,8 +44,23 @@ public final class AnimeBaseScene {
         Face(int index,float depth){this.index=index;this.depth=depth;}
     }
 
-    /** Draws the editable mesh into its true position in the paint-layer stack. */
+    /** Cached mesh render: geometry is rebuilt only when the pose changes. */
     public synchronized void draw(Canvas canvas, RectF bounds, int opacity) {
+        int width=Math.max(1,Math.round(bounds.width()));
+        int height=Math.max(1,Math.round(bounds.height()));
+        if(cachedBitmap==null || cachedBitmap.isRecycled() || cachedWidth!=width || cachedHeight!=height || dirty) {
+            if(cachedBitmap!=null&&!cachedBitmap.isRecycled()) cachedBitmap.recycle();
+            cachedBitmap=Bitmap.createBitmap(width,height,Bitmap.Config.ARGB_8888);
+            cachedWidth=width; cachedHeight=height;
+            render(new Canvas(cachedBitmap),new RectF(0,0,width,height));
+            dirty=false;
+        }
+        bitmapPaint.setAlpha(Math.max(0,Math.min(100,opacity))*255/100);
+        canvas.drawBitmap(cachedBitmap,null,bounds,bitmapPaint);
+        bitmapPaint.setAlpha(255);
+    }
+
+    private void render(Canvas canvas, RectF bounds) {
         int faceCount=positions.length/9;
         float[][] projected=new float[positions.length/3][3];
         double ax=Math.toRadians(rx), ay=Math.toRadians(ry);
@@ -65,9 +86,10 @@ public final class AnimeBaseScene {
         Arrays.sort(faces,(a,b)->Float.compare(a.depth,b.depth));
         int save=canvas.save();
         canvas.clipRect(bounds);
+        Path path=new Path();
         for(Face face:faces){
-            int base=face.index*9, cbase=face.index*12;
-            Path path=new Path();
+            int cbase=face.index*12;
+            path.reset();
             path.moveTo(projected[face.index*3][0],projected[face.index*3][1]);
             path.lineTo(projected[face.index*3+1][0],projected[face.index*3+1][1]);
             path.lineTo(projected[face.index*3+2][0],projected[face.index*3+2][1]);
@@ -75,7 +97,7 @@ public final class AnimeBaseScene {
             int r=(int)(((colors[cbase]+colors[cbase+4]+colors[cbase+8])/3f)*255f);
             int g=(int)(((colors[cbase+1]+colors[cbase+5]+colors[cbase+9])/3f)*255f);
             int b=(int)(((colors[cbase+2]+colors[cbase+6]+colors[cbase+10])/3f)*255f);
-            int a=(int)(((colors[cbase+3]+colors[cbase+7]+colors[cbase+11])/3f)*opacity/100f*255f);
+            int a=(int)(((colors[cbase+3]+colors[cbase+7]+colors[cbase+11])/3f)*255f);
             paint.setColor(android.graphics.Color.argb(a,r,g,b));
             canvas.drawPath(path,paint);
         }
