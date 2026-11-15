@@ -39,11 +39,29 @@ public class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        loadBrushPreferences();
         installCrashReporter();
         getWindow().setStatusBarColor(Color.rgb(38,112,171));
         getWindow().setNavigationBarColor(Color.rgb(207,235,246));
         showGallery();
         showPreviousCrashReport();
+    }
+
+    private void loadBrushPreferences() {
+        android.content.SharedPreferences p=getSharedPreferences("brush_preferences",MODE_PRIVATE);
+        brushSize=Math.max(1f,Math.min(80f,p.getFloat("size",8f)));
+        brushOpacity=Math.max(1,Math.min(100,p.getInt("opacity",100)));
+        stabilizer=Math.max(0,Math.min(100,p.getInt("stabilizer",0)));
+        brushPreset=Math.max(0,Math.min(4,p.getInt("preset",0)));
+    }
+
+    private void saveBrushPreferences() {
+        getSharedPreferences("brush_preferences",MODE_PRIVATE).edit()
+                .putFloat("size",brushSize)
+                .putInt("opacity",brushOpacity)
+                .putInt("stabilizer",stabilizer)
+                .putInt("preset",brushPreset)
+                .apply();
     }
 
     @Override public void onBackPressed() {
@@ -381,12 +399,13 @@ public class MainActivity extends Activity {
         sizeOpacityRow.addView(sizeLabel);
         SeekBar size = new SeekBar(this);
         size.setMax(80);
-        size.setProgress(6);
+        size.setProgress((int)brushSize);
         size.setPadding(2,0,4,0);
         size.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar b,int value,boolean user) {
                 brushSize = Math.max(1,value);
                 drawingView.setBrushSize(brushSize);
+                if(user) saveBrushPreferences();
             }
             public void onStartTrackingTouch(SeekBar b) {}
             public void onStopTrackingTouch(SeekBar b) {}
@@ -399,12 +418,13 @@ public class MainActivity extends Activity {
         sizeOpacityRow.addView(opacityLabel);
         SeekBar opacity = new SeekBar(this);
         opacity.setMax(100);
-        opacity.setProgress(100);
+        opacity.setProgress(brushOpacity);
         opacity.setPadding(2,0,4,0);
         opacity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar b,int value,boolean user) {
                 brushOpacity = value;
                 drawingView.setBrushOpacity(brushOpacity);
+                if(user) saveBrushPreferences();
             }
             public void onStartTrackingTouch(SeekBar b) {}
             public void onStopTrackingTouch(SeekBar b) {}
@@ -424,6 +444,7 @@ public class MainActivity extends Activity {
             public void onItemSelected(android.widget.AdapterView<?> parent, View view, int position, long id) {
                 brushPreset = position;
                 drawingView.setBrushPreset(position);
+                saveBrushPreferences();
             }
             public void onNothingSelected(android.widget.AdapterView<?> parent) {}
         });
@@ -435,13 +456,14 @@ public class MainActivity extends Activity {
         presetStabilizerRow.addView(stabilizerLabel);
         SeekBar stabilizerBar = new SeekBar(this);
         stabilizerBar.setMax(100);
-        stabilizerBar.setProgress(0);
+        stabilizerBar.setProgress(stabilizer);
         stabilizerBar.setPadding(2,0,2,0);
         stabilizerBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             public void onProgressChanged(SeekBar b,int value,boolean user) {
                 stabilizer = value;
                 stabilizerLabel.setText("Stab " + value);
                 drawingView.setStabilizer(value);
+                if(user) saveBrushPreferences();
             }
             public void onStartTrackingTouch(SeekBar b) {}
             public void onStopTrackingTouch(SeekBar b) {}
