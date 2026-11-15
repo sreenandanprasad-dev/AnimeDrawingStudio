@@ -94,9 +94,19 @@ public final class AnimeBaseScene {
             path.lineTo(projected[face.index*3+1][0],projected[face.index*3+1][1]);
             path.lineTo(projected[face.index*3+2][0],projected[face.index*3+2][1]);
             path.close();
-            int r=(int)(((colors[cbase]+colors[cbase+4]+colors[cbase+8])/3f)*255f);
-            int g=(int)(((colors[cbase+1]+colors[cbase+5]+colors[cbase+9])/3f)*255f);
-            int b=(int)(((colors[cbase+2]+colors[cbase+6]+colors[cbase+10])/3f)*255f);
+            float[] va=projected[face.index*3], vb=projected[face.index*3+1], vc=projected[face.index*3+2];
+            float ux=vb[0]-va[0], uy=vb[1]-va[1], uz=vb[2]-va[2];
+            float vx=vc[0]-va[0], vy=vc[1]-va[1], vz=vc[2]-va[2];
+            float nx=uy*vz-uz*vy, ny=uz*vx-ux*vz, nz=ux*vy-uy*vx;
+            float nl=(float)Math.sqrt(nx*nx+ny*ny+nz*nz);
+            float light=.82f;
+            if(nl>.0001f) {
+                float diffuse=Math.abs((nx*.28f+ny*-.38f+nz*.88f)/nl);
+                light=.68f+.32f*diffuse;
+            }
+            int r=Math.min(255,Math.round(((colors[cbase]+colors[cbase+4]+colors[cbase+8])/3f)*255f*light));
+            int g=Math.min(255,Math.round(((colors[cbase+1]+colors[cbase+5]+colors[cbase+9])/3f)*255f*light));
+            int b=Math.min(255,Math.round(((colors[cbase+2]+colors[cbase+6]+colors[cbase+10])/3f)*255f*light));
             int a=(int)(((colors[cbase+3]+colors[cbase+7]+colors[cbase+11])/3f)*255f);
             paint.setColor(android.graphics.Color.argb(a,r,g,b));
             canvas.drawPath(path,paint);
