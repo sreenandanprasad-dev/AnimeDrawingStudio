@@ -1,8 +1,13 @@
 <resources>
     <style name="AppTheme" parent="@android:style/Theme.Material.Light.NoActionBar">
-        <item name="android:colorAccent">#6750A4</item>
-        <item name="android:statusBarColor">#1C1C23</item>
-        <item name="android:navigationBarColor">#1C1C23</item>
+        <!-- Windows 95 palette: teal desktop, gray faces, navy titles -->
+        <item name="android:colorAccent">#000080</item>
+        <item name="android:colorPrimary">#000080</item>
+        <item name="android:colorPrimaryDark">#000080</item>
+        <item name="android:statusBarColor">#008080</item>
+        <item name="android:navigationBarColor">#D4D0C8</item>
+        <item name="android:windowBackground">#008080</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:textColorPrimary">#000000</item>
     </style>
 </resources>

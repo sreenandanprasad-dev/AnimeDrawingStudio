@@ -694,30 +694,110 @@ public class MainActivity extends Activity {
         if(drawingView==null || !drawingView.has3DLayer()) return;
         LinearLayout panel=new LinearLayout(this);
         panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(dp(16),dp(8),dp(16),dp(8));
-        int[] values={0,0,0,0};
-        String[] labels={"Shoulder spread","Elbow bend","Hip spread","Knee bend"};
-        int[] limits={70,100,45,90};
-        for(int i=0;i<labels.length;i++) {
-            final int index=i;
-            TextView label=new TextView(this); label.setText(labels[i]+"  0°");
-            label.setTextColor(Color.rgb(35,75,105));
-            panel.addView(label);
-            SeekBar slider=new SeekBar(this); slider.setMax(limits[i]*2); slider.setProgress(limits[i]);
-            panel.addView(slider,new LinearLayout.LayoutParams(-1,dp(38)));
-            slider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+        panel.setPadding(dp(14),dp(10),dp(14),dp(10));
+        panel.setBackgroundColor(Color.rgb(212,208,200));
+        TextView title=new TextView(this);
+        title.setText(" 3D POSING STUDIO");
+        title.setTextColor(Color.WHITE);
+        title.setTypeface(Typeface.DEFAULT_BOLD);
+        title.setTextSize(15);
+        title.setPadding(dp(4),dp(4),dp(4),dp(4));
+        title.setBackgroundColor(Color.rgb(0,0,128));
+        panel.addView(title,new LinearLayout.LayoutParams(-1,-2));
+        TextView presetLabel=new TextView(this);
+        presetLabel.setText("Pose presets:");
+        presetLabel.setTextColor(Color.BLACK);
+        presetLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        presetLabel.setPadding(0,dp(8),0,dp(2));
+        panel.addView(presetLabel);
+        LinearLayout presetRow=new LinearLayout(this);
+        presetRow.setOrientation(LinearLayout.HORIZONTAL);
+        panel.addView(presetRow,new LinearLayout.LayoutParams(-1,-2));
+        final Runnable[] refreshSliders=new Runnable[1];
+        for(int p=0;p<AnimeBaseScene.PRESET_NAMES.length;p++) {
+            final int preset=p;
+            Button b=new Button(this);
+            b.setText(AnimeBaseScene.PRESET_NAMES[p]);
+            b.setTextSize(10); b.setAllCaps(false);
+            b.setTextColor(Color.BLACK);
+            styleWin95Button(b);
+            presetRow.addView(b,new LinearLayout.LayoutParams(0,dp(36),1));
+            b.setOnClickListener(v->{ drawingView.apply3DPreset(preset); if(refreshSliders[0]!=null) refreshSliders[0].run(); });
+        }
+        TextView jointLabel=new TextView(this);
+        jointLabel.setText("Joint (17 rig joints, 3 axes each):");
+        jointLabel.setTextColor(Color.BLACK);
+        jointLabel.setTypeface(Typeface.DEFAULT_BOLD);
+        jointLabel.setPadding(0,dp(8),0,dp(2));
+        panel.addView(jointLabel);
+        Spinner jointSpinner=new Spinner(this);
+        String[] jointNames=new String[AnimeBaseScene.JOINT_COUNT];
+        for(int j=0;j<jointNames.length;j++) jointNames[j]=AnimeBaseScene.jointName(j);
+        ArrayAdapter<String> adapter=new ArrayAdapter<>(this,android.R.layout.simple_spinner_item,jointNames);
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        jointSpinner.setAdapter(adapter);
+        jointSpinner.setSelection(AnimeBaseScene.J_SHOULDER_R);
+        panel.addView(jointSpinner,new LinearLayout.LayoutParams(-1,-2));
+        String[] axes={"X (pitch)","Y (twist)","Z (spread)"};
+        TextView[] valueLabels=new TextView[3];
+        SeekBar[] sliders=new SeekBar[3];
+        for(int a=0;a<3;a++) {
+            final int axis=a;
+            valueLabels[a]=new TextView(this);
+            valueLabels[a].setTextColor(Color.BLACK);
+            panel.addView(valueLabels[a]);
+            sliders[a]=new SeekBar(this);
+            panel.addView(sliders[a],new LinearLayout.LayoutParams(-1,dp(36)));
+            sliders[a].setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
                 public void onProgressChanged(SeekBar bar,int progress,boolean fromUser) {
-                    values[index]=progress-limits[index];
-                    label.setText(labels[index]+"  "+values[index]+"°");
-                    drawingView.set3DPose(values[0],values[1],values[2],values[3]);
+                    if(!fromUser) return;
+                    int joint=jointSpinner.getSelectedItemPosition();
+                    int value=AnimeBaseScene.jointMin(joint,axis)+progress;
+                    float[] cur=drawingView.get3DJointPose(joint);
+                    cur[axis]=value;
+                    drawingView.set3DJointPose(joint,cur[0],cur[1],cur[2]);
+                    valueLabels[axis].setText(axes[axis]+"  "+value+"°");
                 }
                 public void onStartTrackingTouch(SeekBar bar) {}
                 public void onStopTrackingTouch(SeekBar bar) {}
             });
         }
-        new AlertDialog.Builder(this).setTitle("3D Pose Controls").setView(panel)
+        refreshSliders[0]=()->{
+            int joint=jointSpinner.getSelectedItemPosition();
+            float[] cur=drawingView.get3DJointPose(joint);
+            for(int a=0;a<3;a++) {
+                int min=AnimeBaseScene.jointMin(joint,a), max=AnimeBaseScene.jointMax(joint,a);
+                sliders[a].setMax(Math.max(1,max-min));
+                sliders[a].setProgress((int)cur[a]-min);
+                valueLabels[a].setText(axes[a]+"  "+Math.round(cur[a])+"°");
+                boolean locked=(max<=min);
+                sliders[a].setEnabled(!locked);
+                valueLabels[a].setEnabled(!locked);
+            }
+        };
+        jointSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            public void onItemSelected(AdapterView<?> parent,View view,int pos,long id) { refreshSliders[0].run(); }
+            public void onNothingSelected(AdapterView<?> parent) {}
+        });
+        refreshSliders[0].run();
+        LinearLayout actions=new LinearLayout(this);
+        actions.setOrientation(LinearLayout.HORIZONTAL);
+        actions.setPadding(0,dp(8),0,0);
+        panel.addView(actions,new LinearLayout.LayoutParams(-1,-2));
+        Button mirrorButton=new Button(this);
+        mirrorButton.setText("Mirror L/R"); mirrorButton.setTextSize(11); mirrorButton.setAllCaps(false);
+        mirrorButton.setTextColor(Color.BLACK);
+        styleWin95Button(mirrorButton);
+        actions.addView(mirrorButton,new LinearLayout.LayoutParams(0,dp(38),1));
+        mirrorButton.setOnClickListener(v->{ drawingView.mirror3DPose(); refreshSliders[0].run(); });
+        Button resetButton=new Button(this);
+        resetButton.setText("Reset pose"); resetButton.setTextSize(11); resetButton.setAllCaps(false);
+        resetButton.setTextColor(Color.BLACK);
+        styleWin95Button(resetButton);
+        actions.addView(resetButton,new LinearLayout.LayoutParams(0,dp(38),1));
+        resetButton.setOnClickListener(v->{ drawingView.reset3DPose(); refreshSliders[0].run(); });
+        new AlertDialog.Builder(this).setTitle("3D Posing Studio").setView(panel)
                 .setNegativeButton("Close",null)
-                .setNeutralButton("Reset", (dialog,which)->drawingView.set3DPose(0,0,0,0))
                 .show();
     }
 
@@ -821,22 +901,37 @@ public class MainActivity extends Activity {
         }
     }
 
-    private GradientDrawable glassGradient(int topColor, int bottomColor, int borderColor, int radius) {
-        GradientDrawable background = new GradientDrawable(
-                GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{topColor, bottomColor});
-        background.setCornerRadius(radius);
-        background.setStroke(dp(1), borderColor);
-        return background;
+    // Windows 95 raised panel: flat gray face with a chunky 2px bevel.
+    // Keeps the old gradient helper's signature so every toolbar/panel call site restyles at once.
+    private android.graphics.drawable.Drawable glassGradient(int topColor, int bottomColor, int borderColor, int radius) {
+        return win95Panel(Color.rgb(212,208,200),false);
     }
 
-    private GradientDrawable bevel(boolean pressed) {
-        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                pressed ? new int[]{Color.rgb(190,239,255),Color.rgb(83,180,222),Color.rgb(35,126,184)}
-                        : new int[]{Color.WHITE,Color.rgb(226,246,252),Color.rgb(151,211,235)});
-        d.setCornerRadius(dp(9));
-        d.setStroke(dp(1),pressed?Color.rgb(35,132,187):Color.rgb(255,255,255));
-        return d;
+    private android.graphics.drawable.Drawable win95Panel(int face,boolean sunken) {
+        int tl=sunken?Color.rgb(128,128,128):Color.WHITE;
+        int br=sunken?Color.WHITE:Color.rgb(128,128,128);
+        android.graphics.drawable.ColorDrawable base=new android.graphics.drawable.ColorDrawable(br);
+        android.graphics.drawable.ColorDrawable edge=new android.graphics.drawable.ColorDrawable(tl);
+        android.graphics.drawable.ColorDrawable faceLayer=new android.graphics.drawable.ColorDrawable(face);
+        android.graphics.drawable.LayerDrawable panel=new android.graphics.drawable.LayerDrawable(
+                new android.graphics.drawable.Drawable[]{base,edge,faceLayer});
+        int b=dp(2);
+        panel.setLayerInset(1,0,0,b,b);
+        panel.setLayerInset(2,b,b,b,b);
+        return panel;
+    }
+
+    private android.graphics.drawable.Drawable bevel(boolean pressed) {
+        return win95Panel(pressed?Color.rgb(190,186,178):Color.rgb(212,208,200),pressed);
+    }
+
+    private void styleWin95Button(Button button) {
+        StateListDrawable states=new StateListDrawable();
+        states.addState(new int[]{android.R.attr.state_pressed},bevel(true));
+        states.addState(new int[]{},bevel(false));
+        button.setBackground(states);
+        button.setMinHeight(32);
+        button.setMinimumHeight(32);
     }
 
     private void setActiveTool(String tool) {
@@ -858,22 +953,22 @@ public class MainActivity extends Activity {
                 : button == eyedropperToolButton ? "picker" : "select";
         button.setText("");
         button.setContentDescription(type + " tool");
-        AeroToolIcon icon = new AeroToolIcon(type,active);
+        Win95ToolIcon icon = new Win95ToolIcon(type,active);
         icon.setBounds(0,0,dp(28),dp(28));
         button.setCompoundDrawables(null,icon,null,null);
         button.setCompoundDrawablePadding(0);
         button.setGravity(Gravity.CENTER);
         button.setPadding(1,1,1,1);
-        button.setElevation(dp(active?4:1));
-        button.setBackgroundColor(Color.TRANSPARENT);
+        button.setElevation(0);
+        button.setBackground(bevel(active));
     }
 
-    // Glossy, three-dimensional Frutiger Aero tool artwork.
-    private class AeroToolIcon extends android.graphics.drawable.Drawable {
+    // Chunky Windows 95 tool artwork: flat gray key with a hard bevel, sunken when active.
+    private class Win95ToolIcon extends android.graphics.drawable.Drawable {
         private final String type;
         private final boolean active;
         private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
-        AeroToolIcon(String type, boolean active) { this.type=type; this.active=active; }
+        Win95ToolIcon(String type, boolean active) { this.type=type; this.active=active; }
 
         private void fill(Canvas c, Paint paint, int color) {
             paint.setShader(null); paint.setStyle(Paint.Style.FILL); paint.setColor(color);
@@ -892,87 +987,75 @@ public class MainActivity extends Activity {
             p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(l,t,l,b,colors,null,Shader.TileMode.CLAMP));
             c.drawRoundRect(l,t,r,b,radius,radius,p); p.setShader(null);
         }
+        // Chunky 16-colour Win95 glyphs: flat fills, black outlines, no gradients.
         private void drawTool(Canvas c) {
-            p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND);
+            p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND);
+            int ink=Color.BLACK, navy=Color.rgb(0,0,128), teal=Color.rgb(0,128,128);
+            int maroon=Color.rgb(128,0,0), yellow=Color.rgb(255,255,0);
             if ("brush".equals(type)) {
-                Path shaft=new Path(); shaft.moveTo(10,27); shaft.lineTo(25,10);
-                strokePath(c,shaft,Color.rgb(30,67,112),7);
-                strokePath(c,shaft,Color.rgb(20,126,235),4);
-                line(c,13,23,24,11,Color.WHITE,1.3f);
-                rounded(c,7,23,15,29,3,new int[]{Color.rgb(255,220,125),Color.rgb(171,83,28)});
-                Path bristles=new Path(); bristles.moveTo(7,25); bristles.quadTo(3,29,5,31);
-                bristles.quadTo(11,31,14,27); strokePath(c,bristles,Color.rgb(119,62,25),2.6f);
-                line(c,11,22,16,17,Color.rgb(205,220,230),2);
+                line(c,9,27,26,9,ink,8);
+                line(c,9,27,26,9,navy,5);
+                line(c,13,23,24,11,Color.WHITE,1.4f);
+                p.setStyle(Paint.Style.FILL); p.setShader(null); p.setColor(yellow);
+                c.drawRect(7,22,15,29,p);
+                strokePath(c,rectPath(7,22,15,29),ink,1.6f);
+                line(c,7,26,4,30,ink,3.4f);
             } else if ("eraser".equals(type)) {
-                Path e=new Path(); e.moveTo(8,22); e.lineTo(19,8); e.quadTo(21,6,24,9);
-                e.lineTo(29,14); e.quadTo(31,16,29,18); e.lineTo(20,29); e.close();
-                p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(8,8,24,30,
-                    new int[]{Color.WHITE,Color.rgb(255,147,176),Color.rgb(210,65,117)},null,Shader.TileMode.CLAMP));
-                c.drawPath(e,p); p.setShader(null); strokePath(c,e,Color.rgb(80,105,145),1.5f);
-                line(c,10,23,19,29,Color.WHITE,1.4f);
+                Path e=new Path(); e.moveTo(8,24); e.lineTo(20,8); e.lineTo(29,15); e.lineTo(17,30); e.close();
+                p.setStyle(Paint.Style.FILL); p.setShader(null); p.setColor(Color.WHITE);
+                c.drawPath(e,p); strokePath(c,e,ink,1.8f);
+                line(c,11,24,20,28,Color.rgb(255,0,255),2.2f);
             } else if ("fill".equals(type)) {
                 Path bucket=new Path(); bucket.moveTo(8,14); bucket.lineTo(24,14);
-                bucket.lineTo(22,26); bucket.quadTo(16,30,10,26); bucket.close();
-                p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(9,14,23,28,
-                    new int[]{Color.WHITE,Color.rgb(80,185,255),Color.rgb(0,92,202)},null,Shader.TileMode.CLAMP));
-                c.drawPath(bucket,p); p.setShader(null); strokePath(c,bucket,Color.rgb(35,75,130),1.8f);
-                Path rim=new Path(); rim.moveTo(7,14); rim.quadTo(16,9,25,14);
-                strokePath(c,rim,Color.WHITE,3); strokePath(c,rim,Color.rgb(100,185,245),1.2f);
-                Path drop=new Path(); drop.moveTo(25,23); drop.quadTo(21,28,25,30);
-                drop.quadTo(30,28,25,23); p.setStyle(Paint.Style.FILL);
-                p.setShader(new LinearGradient(22,23,28,30,Color.WHITE,Color.rgb(0,150,255),Shader.TileMode.CLAMP));
-                c.drawPath(drop,p); p.setShader(null);
+                bucket.lineTo(22,27); bucket.lineTo(10,27); bucket.close();
+                p.setStyle(Paint.Style.FILL); p.setShader(null); p.setColor(teal);
+                c.drawPath(bucket,p); strokePath(c,bucket,ink,1.8f);
+                line(c,7,14,25,14,ink,2.4f);
+                Path drop=new Path(); drop.moveTo(26,22); drop.lineTo(22,28); drop.lineTo(30,28); drop.close();
+                p.setStyle(Paint.Style.FILL); p.setColor(navy); c.drawPath(drop,p);
             } else if ("line".equals(type)) {
-                line(c,7,27,27,7,Color.rgb(25,75,135),5);
-                line(c,7,26,27,6,Color.WHITE,2.5f);
-                line(c,8,25,26,7,Color.rgb(45,185,255),1.2f);
+                line(c,7,27,27,7,ink,5);
+                line(c,7,27,27,7,Color.WHITE,2);
             } else if ("rect".equals(type) || "ellipse".equals(type)) {
-                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3.5f); p.setColor(Color.WHITE);
-                if("rect".equals(type)) c.drawRoundRect(7,8,27,26,2,2,p);
-                else c.drawOval(7,8,27,26,p);
-                p.setStrokeWidth(1.2f); p.setColor(Color.rgb(0,105,220));
-                if("rect".equals(type)) c.drawRoundRect(7,8,27,26,2,2,p);
-                else c.drawOval(7,8,27,26,p);
+                p.setShader(null); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3); p.setColor(ink);
+                if("rect".equals(type)) c.drawRect(8,9,26,25,p);
+                else c.drawOval(8,9,26,25,p);
             } else if ("shape".equals(type)) {
-                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3.2f); p.setColor(Color.WHITE);
-                c.drawRoundRect(7,7,27,27,3,3,p);
-                p.setStrokeWidth(1.2f); p.setColor(Color.rgb(0,93,180)); c.drawRoundRect(7,7,27,27,3,3,p);
-                p.setStyle(Paint.Style.FILL);
-                p.setShader(new LinearGradient(10,9,23,25,new int[]{Color.WHITE,Color.rgb(120,225,255),Color.rgb(0,103,208)},null,Shader.TileMode.CLAMP));
-                c.drawCircle(23,23,3,p); p.setShader(null);
+                p.setShader(null); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.6f); p.setColor(ink);
+                c.drawRect(7,7,20,20,p);
+                p.setStyle(Paint.Style.FILL); p.setColor(maroon);
+                c.drawCircle(24,24,4,p);
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.4f); p.setColor(ink);
+                c.drawCircle(24,24,4,p);
             } else if ("picker".equals(type)) {
-                line(c,9,25,24,9,Color.rgb(38,65,105),7);
-                line(c,9,24,24,8,Color.rgb(195,225,245),4);
-                line(c,10,23,22,10,Color.WHITE,1.2f);
-                p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(6,24,12,31,
-                    Color.rgb(100,240,255),Color.rgb(0,110,230),Shader.TileMode.CLAMP));
-                c.drawCircle(8,27,3.2f,p); p.setShader(null);
+                line(c,9,25,24,9,ink,7);
+                line(c,9,25,24,9,Color.WHITE,3.6f);
+                p.setStyle(Paint.Style.FILL); p.setShader(null); p.setColor(teal); c.drawCircle(8,27,3.4f,p);
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.4f); p.setColor(ink);
+                c.drawCircle(8,27,3.4f,p);
             } else {
-                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.5f);
+                p.setShader(null); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2.2f);
                 p.setPathEffect(new android.graphics.DashPathEffect(new float[]{3,2},0));
-                p.setColor(Color.WHITE); c.drawRoundRect(7,8,27,26,2,2,p); p.setPathEffect(null);
-                line(c,7,8,12,8,Color.rgb(0,90,195),1);
+                p.setColor(ink); c.drawRect(8,9,26,25,p); p.setPathEffect(null);
             }
+        }
+        private Path rectPath(float l,float t,float r,float b) {
+            Path path=new Path(); path.moveTo(l,t); path.lineTo(r,t); path.lineTo(r,b); path.lineTo(l,b); path.close();
+            return path;
         }
         @Override public void draw(Canvas canvas) {
             Rect bounds=getBounds(); int save=canvas.save();
             canvas.translate(bounds.left,bounds.top); canvas.scale(bounds.width()/36f,bounds.height()/36f);
-            // Dark underside, polished chrome rim, and translucent aqua glass face.
-            p.setStyle(Paint.Style.FILL); p.setShader(null); p.setColor(Color.rgb(22,83,137));
-            canvas.drawRoundRect(1,2,35,35,8,8,p);
-            rounded(canvas,1,1,35,34,8,new int[]{Color.WHITE,Color.rgb(132,204,237),Color.rgb(32,111,187)});
-            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.5f); p.setColor(Color.WHITE);
-            canvas.drawRoundRect(2,2,34,33,7,7,p);
-            rounded(canvas,4,4,32,31,6,active
-                ? new int[]{Color.rgb(170,239,255),Color.rgb(26,154,236),Color.rgb(0,76,178)}
-                : new int[]{Color.rgb(210,249,255),Color.rgb(52,177,239),Color.rgb(0,111,205)});
-            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1); p.setColor(Color.rgb(180,242,255));
-            canvas.drawRoundRect(4,4,32,31,6,6,p);
-            p.setStyle(Paint.Style.FILL); p.setShader(new LinearGradient(5,5,18,18,
-                new int[]{0xCCFFFFFF,0x44FFFFFF,0x00FFFFFF},null,Shader.TileMode.CLAMP));
-            canvas.drawOval(5,4,25,15,p); p.setShader(null);
-            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.2f); p.setColor(0x99FFFFFF);
-            canvas.drawArc(5,5,31,31,205,125,false,p);
+            // Win95 button face: flat gray slab, chunky black/white bevel, sunken + shifted when active.
+            int tl=active?Color.rgb(128,128,128):Color.WHITE;
+            int br=active?Color.WHITE:Color.rgb(128,128,128);
+            p.setShader(null); p.setStyle(Paint.Style.FILL);
+            p.setColor(Color.BLACK); canvas.drawRect(0,0,36,36,p);
+            p.setColor(tl); canvas.drawRect(1,1,35,3,p); canvas.drawRect(1,1,3,35,p);
+            p.setColor(br); canvas.drawRect(1,33,35,35,p); canvas.drawRect(33,1,35,35,p);
+            p.setColor(active?Color.rgb(190,186,178):Color.rgb(223,223,223));
+            canvas.drawRect(3,3,33,33,p);
+            if(active) canvas.translate(1,1);
             drawTool(canvas);
             canvas.restoreToCount(save);
         }
@@ -987,16 +1070,11 @@ public class MainActivity extends Activity {
         Button b = new Button(this);
         b.setText(label);
         b.setTextSize(parent.getOrientation()==LinearLayout.VERTICAL ? 21 : 12);
-        b.setTextColor(Color.rgb(24,75,108));
+        b.setTextColor(Color.BLACK);
         b.setAllCaps(false);
-        b.setTypeface(Typeface.DEFAULT);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
         b.setPadding(3,0,3,0);
-        StateListDrawable states = new StateListDrawable();
-        states.addState(new int[]{android.R.attr.state_pressed},bevel(true));
-        states.addState(new int[]{},bevel(false));
-        b.setBackground(states);
-        b.setMinHeight(32);
-        b.setMinimumHeight(32);
+        styleWin95Button(b);
         LinearLayout.LayoutParams lp = parent.getOrientation()==LinearLayout.VERTICAL
                 ? new LinearLayout.LayoutParams(-1,46)
                 : new LinearLayout.LayoutParams(0,38,1);
@@ -1940,6 +2018,11 @@ public class MainActivity extends Activity {
         }
         boolean has3DLayer() { return find3DLayerIndex()>=0; }
         void set3DPose(float arm,float elbow,float leg,float knee) { int index=find3DLayerIndex(); if(index>=0) { layers.get(index).scene.setPose(arm,elbow,leg,knee); invalidate(); } }
+        void set3DJointPose(int joint,float x,float y,float z) { int index=find3DLayerIndex(); if(index>=0) { layers.get(index).scene.setJointPose(joint,x,y,z); invalidate(); } }
+        float[] get3DJointPose(int joint) { int index=find3DLayerIndex(); if(index>=0) return layers.get(index).scene.getJointPose(joint); return new float[3]; }
+        void reset3DPose() { int index=find3DLayerIndex(); if(index>=0) { layers.get(index).scene.resetPose(); invalidate(); } }
+        void apply3DPreset(int preset) { int index=find3DLayerIndex(); if(index>=0) { layers.get(index).scene.applyPreset(preset); invalidate(); } }
+        void mirror3DPose() { int index=find3DLayerIndex(); if(index>=0) { layers.get(index).scene.mirrorPose(); invalidate(); } }
         void rotate3DModel(float dx,float dy) {
             int index=find3DLayerIndex();
             if(index>=0) { layers.get(index).scene.rotate(dx,dy); invalidate(); }

@@ -1,0 +1,20 @@
+{
+  "name": "tools",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@pixiv/three-vrm": "^3.4.0",
+    "@sparticuz/chromium": "^131.0.1",
+    "pngjs": "^7.0.0",
+    "puppeteer-core": "^23.11.1",
+    "sharp": "^0.33.5",
+    "three": "^0.170.0"
+  }
+}
